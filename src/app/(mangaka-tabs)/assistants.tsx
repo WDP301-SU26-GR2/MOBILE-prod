@@ -16,7 +16,7 @@ export default function AssistantsScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedAssistant, setSelectedAssistant] = useState<any>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ seriesId: 'mock_series_1', role: 'BACKGROUND', hireStart: '2026-08-01', hireEnd: '2026-10-01' });
+  const [inviteForm, setInviteForm] = useState({ seriesId: '', role: 'BACKGROUND', hireStart: '', hireEnd: '' });
   const [sending, setSending] = useState(false);
 
   const { theme } = useThemeStore();
@@ -33,11 +33,7 @@ export default function AssistantsScreen() {
       }
     } catch (error) {
       console.log('Error fetching assistants', error);
-      // MOCK DATA for layout testing
-      setAssistants([
-        { userId: '1', displayName: 'John Doe', specializations: ['BACKGROUND', 'SCREENTONE'], reputationScore: 4.5, ratingCount: 45, isRecommended: true, availabilityStatus: 'AVAILABLE' },
-        { userId: '2', displayName: 'Jane Smith', specializations: ['INKING', 'COLORING'], reputationScore: 4.2, ratingCount: 20, isRecommended: false, availabilityStatus: 'BUSY' },
-      ]);
+      setAssistants([]);
     } finally {
       setLoading(false);
     }
@@ -54,10 +50,10 @@ export default function AssistantsScreen() {
         assistantId: selectedAssistant.userId,
         ...inviteForm,
       });
-      alert('Invite sent successfully!');
+      alert('Gửi lời mời thành công!');
       setShowInviteModal(false);
-    } catch (error) {
-      alert('Mock Invite sent successfully!');
+    } catch (error: any) {
+      alert('Gửi lời mời thất bại: ' + (error.response?.data?.message || 'Vui lòng thử lại'));
       setShowInviteModal(false);
     } finally {
       setSending(false);
@@ -68,7 +64,7 @@ export default function AssistantsScreen() {
     <View style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.header}>
         <TextInput
-          placeholder="Search assistants by name..."
+          placeholder="Tìm trợ lý theo tên..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           leftIcon={<Search size={20} color={currentColors.textSecondary} />}
@@ -98,7 +94,7 @@ export default function AssistantsScreen() {
           )}
           ListEmptyComponent={
             <Typography align="center" color={currentColors.textSecondary}>
-              No assistants found.
+              Không tìm thấy trợ lý nào.
             </Typography>
           }
         />
@@ -110,30 +106,31 @@ export default function AssistantsScreen() {
           <View style={styles.modalCenter}>
             <View style={[styles.modalContent, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
               <Typography variant="h3" font="headline" style={{ marginBottom: 16 }}>
-                Invite {selectedAssistant.displayName}
+                Mời {selectedAssistant.displayName}
               </Typography>
               
               <TextInput
-                label="Select Series (Mock)"
-                value="One Piece"
-                editable={false}
+                label="ID Truyện"
+                value={inviteForm.seriesId}
+                onChangeText={(text) => setInviteForm(prev => ({...prev, seriesId: text}))}
+                placeholder="Nhập ID Truyện của bạn"
               />
               <TextInput
-                label="Role"
+                label="Vai trò"
                 value={inviteForm.role}
                 onChangeText={(text) => setInviteForm(prev => ({...prev, role: text}))}
               />
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <TextInput
-                    label="Start Date"
+                    label="Ngày Bắt đầu"
                     value={inviteForm.hireStart}
                     onChangeText={(text) => setInviteForm(prev => ({...prev, hireStart: text}))}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
                   <TextInput
-                    label="End Date"
+                    label="Ngày Kết thúc"
                     value={inviteForm.hireEnd}
                     onChangeText={(text) => setInviteForm(prev => ({...prev, hireEnd: text}))}
                   />
@@ -142,13 +139,13 @@ export default function AssistantsScreen() {
 
               <View style={styles.modalActions}>
                 <Button 
-                  title="Cancel" 
+                  title="Hủy" 
                   variant="outlined" 
                   onPress={() => setShowInviteModal(false)} 
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button 
-                  title="Send Invite" 
+                  title="Gửi Lời mời" 
                   onPress={handleInvite} 
                   loading={sending} 
                   style={{ flex: 1 }}

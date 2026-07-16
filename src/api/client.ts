@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { Alert } from 'react-native';
+import { router } from 'expo-router';
 
 // Cấu hình URL thông qua biến môi trường (.env) hoặc dùng local port cho việc dev
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-mangaka.novaproj.site';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -23,6 +25,20 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Response interceptor để xử lý lỗi token hết hạn (401)
 apiClient.interceptors.response.use(
   (response) => response,
@@ -30,7 +46,20 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = 'Bearer ' + token;
+          return apiClient(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       const refreshToken = useAuthStore.getState().refreshToken;
       
       if (refreshToken) {
@@ -42,17 +71,26 @@ apiClient.interceptors.response.use(
             await useAuthStore.getState().setAuth(newAccess, newRefresh, user);
             
             originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+            processQueue(null, newAccess);
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
-          // Xóa token nếu không thể refresh
+          processQueue(refreshError, null);
           await useAuthStore.getState().logout();
           return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
       } else {
+        processQueue(new Error('No refresh token'), null);
         await useAuthStore.getState().logout();
+        isRefreshing = false;
+        Alert.alert('Session Expired', 'Please log in again to continue.');
+        router.replace('/(auth)/login');
       }
     }
+    // Log network errors (using console.warn to avoid React Native Red Box)
+    console.warn('[Network Error]:', error?.response?.status, error?.config?.url, error?.message);
     
     return Promise.reject(error);
   }

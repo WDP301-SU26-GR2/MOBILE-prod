@@ -37,12 +37,7 @@ export default function RegisterScreen() {
         params: { email: formData.email }
       });
     } catch (error: any) {
-      // Mock flow
-      router.push({
-        pathname: '/(auth)/verify',
-        params: { email: formData.email || 'test@example.com' }
-      });
-      // Alert.alert('Error', error.response?.data?.message || 'Registration failed');
+      Alert.alert('Lỗi', error.response?.data?.message || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }
@@ -55,8 +50,8 @@ export default function RegisterScreen() {
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Typography variant="h1" font="headline" style={styles.title}>Create Account</Typography>
-          <Typography variant="body" color={currentColors.textSecondary}>Sign up to get started</Typography>
+          <Typography variant="h1" font="headline" style={styles.title}>Tạo Tài Khoản</Typography>
+          <Typography variant="body" color={currentColors.textSecondary}>Đăng ký để bắt đầu</Typography>
         </View>
         
         <View style={styles.roleSelector}>
@@ -85,22 +80,22 @@ export default function RegisterScreen() {
             onPress={() => updateForm('type', 'ASSISTANT')}
           >
             <Typography variant="bodyMedium" color={formData.type === 'ASSISTANT' ? '#fff' : currentColors.text}>
-              Assistant
+              Trợ lý
             </Typography>
           </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
           <TextInput
-            label="Full Name"
-            placeholder="Enter your name"
+            label="Họ và Tên"
+            placeholder="Nhập tên của bạn"
             value={formData.name}
             onChangeText={(text) => updateForm('name', text)}
             leftIcon={<User size={20} color={currentColors.textSecondary} />}
           />
           <TextInput
             label="Email"
-            placeholder="Enter your email"
+            placeholder="Nhập email của bạn"
             value={formData.email}
             onChangeText={(text) => updateForm('email', text)}
             keyboardType="email-address"
@@ -108,36 +103,36 @@ export default function RegisterScreen() {
             leftIcon={<Mail size={20} color={currentColors.textSecondary} />}
           />
           <TextInput
-            label="Phone"
-            placeholder="Enter your phone (+84...)"
+            label="Số điện thoại"
+            placeholder="Nhập số điện thoại (+84...)"
             value={formData.phoneNumber}
             onChangeText={(text) => updateForm('phoneNumber', text)}
             keyboardType="phone-pad"
             leftIcon={<Phone size={20} color={currentColors.textSecondary} />}
           />
           <TextInput
-            label="Password"
-            placeholder="Create a password"
+            label="Mật khẩu"
+            placeholder="Tạo mật khẩu"
             value={formData.password}
             onChangeText={(text) => updateForm('password', text)}
             secureTextEntry
             leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
           />
           <TextInput
-            label="Confirm Password"
-            placeholder="Confirm your password"
+            label="Xác nhận Mật khẩu"
+            placeholder="Xác nhận lại mật khẩu"
             value={formData.confirm_password}
             onChangeText={(text) => updateForm('confirm_password', text)}
             secureTextEntry
             leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
           />
           
-          <Button title="Sign Up" onPress={handleRegister} loading={loading} style={styles.button} />
+          <Button title="Đăng Ký" onPress={handleRegister} loading={loading} style={styles.button} />
           
           <View style={styles.footer}>
-            <Typography variant="body" color={currentColors.textSecondary}>Already have an account? </Typography>
+            <Typography variant="body" color={currentColors.textSecondary}>Đã có tài khoản? </Typography>
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Typography variant="bodyBold" color={currentColors.primary}>Log In</Typography>
+              <Typography variant="bodyBold" color={currentColors.primary}>Đăng Nhập</Typography>
             </TouchableOpacity>
           </View>
         </View>

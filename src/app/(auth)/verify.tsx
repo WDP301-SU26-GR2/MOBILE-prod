@@ -17,19 +17,23 @@ export default function VerifyScreen() {
   const currentColors = colors[theme];
   const email = (params.email as string) || '';
 
-  const handleVerify = async () => {
+  const handleVerify = async (otpCode: string) => {
     try {
       setLoading(true);
-      await authApi.verifyEmail({ email, code });
-      Alert.alert('Success', 'Account verified! Please login.');
+      await authApi.verifyEmail({ email, code: otpCode });
+      Alert.alert('Thành công', 'Đã xác thực tài khoản! Vui lòng đăng nhập.');
       router.replace('/(auth)/login');
     } catch (error: any) {
-      // Mock flow
-      Alert.alert('Success', 'Account verified (MOCK)! Please login.');
-      router.replace('/(auth)/login');
-      // Alert.alert('Error', error.response?.data?.message || 'Verification failed');
+      Alert.alert('Lỗi', error.response?.data?.message || 'Xác thực thất bại');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCodeChange = (text: string) => {
+    setCode(text);
+    if (text.length === 6) {
+      handleVerify(text);
     }
   };
 
@@ -39,26 +43,28 @@ export default function VerifyScreen() {
       style={[styles.container, { backgroundColor: currentColors.background }]}
     >
       <View style={styles.header}>
-        <Typography variant="h1" font="headline" style={styles.title}>Verify Email</Typography>
+        <Typography variant="h1" font="headline" style={styles.title}>Xác Thực Email</Typography>
         <Typography variant="body" color={currentColors.textSecondary}>
-          We've sent a code to {email}. Enter it below to verify your account.
+          Chúng tôi đã gửi một mã đến {email}. Hãy nhập mã đó vào bên dưới để xác thực tài khoản.
         </Typography>
       </View>
       
       <View style={styles.form}>
         <TextInput
-          label="Verification Code"
-          placeholder="Enter 6-digit code"
+          label="Mã Xác Thực"
+          placeholder="Nhập mã 6 số"
           value={code}
-          onChangeText={setCode}
+          onChangeText={handleCodeChange}
           keyboardType="number-pad"
           maxLength={6}
           style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
         />
         
-        <Button title="Verify" onPress={handleVerify} loading={loading} style={styles.button} />
+        <Button title="Xác Thực" onPress={() => handleVerify(code)} loading={loading} style={styles.button} />
         
-        <Button title="Resend Code" variant="outlined" onPress={() => {}} style={styles.resendButton} />
+        <Typography variant="caption" color={currentColors.textSecondary} style={{ textAlign: 'center', marginTop: 16 }}>
+          Vui lòng kiểm tra hộp thư đến và hòm thư Spam để nhận mã OTP.
+        </Typography>
       </View>
     </KeyboardAvoidingView>
   );

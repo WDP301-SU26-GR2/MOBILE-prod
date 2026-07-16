@@ -1,0 +1,139 @@
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Typography } from '../../../../components/Typography';
+import { Button } from '../../../../components/Button';
+import { colors } from '../../../../theme/colors';
+import { Image } from 'expo-image';
+
+const { width } = Dimensions.get('window');
+
+export default function CompositeReview() {
+  const { taskId } = useLocalSearchParams();
+  const router = useRouter();
+  const [task, setTask] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  React.useEffect(() => {
+    fetchTask();
+  }, [taskId]);
+
+  const fetchTask = async () => {
+    try {
+      const data = await mangakaApi.getReviewTask(taskId as string);
+      setTask(data);
+    } catch (error) {
+      console.log('Error fetching review task', error);
+      Alert.alert('Lỗi', 'Không thể tải chi tiết bài nộp.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = () => {
+    Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn duyệt bài này?', [
+      { text: 'Hủy', style: 'cancel' },
+      { 
+        text: 'Duyệt', 
+        onPress: async () => {
+          try {
+            await mangakaApi.approveTask(taskId as string);
+            Alert.alert('Thành công', 'Đã duyệt bài nộp của Assistant.');
+            router.back();
+          } catch (e: any) {
+            Alert.alert('Lỗi', e.response?.data?.message || 'Lỗi khi duyệt bài.');
+          }
+        } 
+      }
+    ]);
+  };
+
+  const handleRevision = () => {
+    Alert.prompt(
+      'Yêu cầu sửa',
+      'Vui lòng nhập lý do:',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Gửi yêu cầu', 
+          onPress: async (reason) => {
+            if (!reason) {
+              Alert.alert('Lỗi', 'Vui lòng nhập lý do.');
+              return;
+            }
+            try {
+              await mangakaApi.rejectTask(taskId as string, reason);
+              Alert.alert('Thành công', 'Đã gửi yêu cầu sửa lại cho Assistant.');
+              router.back();
+            } catch (e: any) {
+              Alert.alert('Lỗi', e.response?.data?.message || 'Lỗi khi gửi yêu cầu.');
+            }
+          } 
+        }
+      ],
+      'plain-text'
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Typography>Đang tải dữ liệu...</Typography>
+      </View>
+    );
+  }
+
+  if (!task) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Typography>Không tìm thấy bài nộp.</Typography>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Typography variant="h2">Duyệt bài Tổng hợp</Typography>
+        <Typography variant="body" color={colors.textSecondary}>
+          Nhiệm vụ: {task.title || 'Không rõ'}
+        </Typography>
+        <Typography variant="body" color={colors.textSecondary}>
+          Trợ lý: {task.assistantName || 'Không rõ'}
+        </Typography>
+      </View>
+
+      <View style={styles.content}>
+        <Typography variant="h3" style={{ marginBottom: 12 }}>Bài nộp</Typography>
+        <Image 
+          source={{ uri: task.imageUrl }} 
+          style={styles.imagePreview} 
+          contentFit="contain"
+        />
+
+        <View style={styles.actions}>
+          <Button 
+            title="Yêu cầu sửa" 
+            variant="outlined" 
+            onPress={handleRevision} 
+            style={styles.btn}
+          />
+          <Button 
+            title="Duyệt bài" 
+            onPress={handleApprove} 
+            style={styles.btn}
+          />
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  content: { padding: 16 },
+  imagePreview: { width: width - 32, height: (width - 32) * 1.33, backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: 24 },
+  actions: { flexDirection: 'row', gap: 16 },
+  btn: { flex: 1 }
+});

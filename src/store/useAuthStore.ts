@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 interface AuthState {
   accessToken: string | null;
@@ -17,23 +17,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
   setAuth: async (accessToken, refreshToken, user) => {
-    await AsyncStorage.setItem('accessToken', accessToken);
-    await AsyncStorage.setItem('refreshToken', refreshToken);
-    await AsyncStorage.setItem('user', JSON.stringify(user));
+    await SecureStore.setItemAsync('accessToken', accessToken);
+    await SecureStore.setItemAsync('refreshToken', refreshToken);
+    await SecureStore.setItemAsync('user', JSON.stringify(user));
     set({ accessToken, refreshToken, user });
   },
   logout: async () => {
-    await AsyncStorage.removeItem('accessToken');
-    await AsyncStorage.removeItem('refreshToken');
-    await AsyncStorage.removeItem('user');
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+    await SecureStore.deleteItemAsync('user');
     set({ accessToken: null, refreshToken: null, user: null });
   },
   hydrate: async () => {
     set({ isLoading: true });
     try {
-      const accessToken = await AsyncStorage.getItem('accessToken');
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
-      const userStr = await AsyncStorage.getItem('user');
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      const refreshToken = await SecureStore.getItemAsync('refreshToken');
+      const userStr = await SecureStore.getItemAsync('user');
       if (accessToken && refreshToken && userStr) {
         set({ accessToken, refreshToken, user: JSON.parse(userStr) });
       }

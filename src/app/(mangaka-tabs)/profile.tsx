@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../components/Typography';
 import { Button } from '../../components/Button';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -22,7 +23,8 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: currentColors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
+      <ScrollView>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: currentColors.primary }]}>
           <Typography variant="h1" font="headline" color="#fff">
@@ -41,7 +43,7 @@ export default function ProfileScreen() {
 
       <View style={[styles.section, { borderTopColor: currentColors.border }]}>
         <View style={styles.settingRow}>
-          <Typography variant="bodyMedium">Dark Mode</Typography>
+          <Typography variant="bodyMedium">Giao diện tối (Dark Mode)</Typography>
           <Switch 
             value={theme === 'dark'} 
             onValueChange={toggleTheme}
@@ -52,13 +54,20 @@ export default function ProfileScreen() {
 
       <View style={styles.actions}>
         <Button 
-          title="Log Out" 
+          title="Thông tin Cập nhật" 
+          variant="primary" 
+          onPress={() => router.push('/(mangaka-tabs)/user-info')} 
+          style={{ marginBottom: 12 }}
+        />
+        <Button 
+          title="Đăng Xuất" 
           variant="outlined" 
           onPress={handleLogout} 
           loading={loading}
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
