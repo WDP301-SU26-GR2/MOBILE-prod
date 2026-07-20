@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../components/Typography';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/Button';
@@ -113,7 +114,7 @@ export default function AssistantInbox() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h1">Hộp thư</Typography>
         <TouchableOpacity onPress={handleReadAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -177,7 +178,7 @@ export default function AssistantInbox() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

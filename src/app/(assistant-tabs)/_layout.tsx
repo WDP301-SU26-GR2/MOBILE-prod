@@ -28,14 +28,17 @@ export default function AssistantTabsLayout() {
         name="task_stack" 
         options={{ title: 'Nhiệm vụ', headerShown: false, tabBarIcon: ({ color, size }) => <CheckSquare color={color} size={size} /> }} 
       />
-      {/* Thêm inbox tab */}
       <Tabs.Screen 
         name="inbox" 
         options={{ title: 'Hộp thư', tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} 
       />
       <Tabs.Screen 
         name="profile" 
-        options={{ title: 'Hồ sơ', href: null }} 
+        options={{ href: null }} 
+      />
+      <Tabs.Screen 
+        name="user-info" 
+        options={{ href: null }} 
       />
     </Tabs>
   );
