@@ -54,9 +54,6 @@ export default function AssistantHome() {
             <Typography variant="h1" numberOfLines={1}>Xin chào, {user?.name || 'Trợ lý'} 👋</Typography>
             <Typography variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>Bạn đã sẵn sàng làm việc chưa?</Typography>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(assistant-tabs)/profile')} style={styles.profileIconWrapper}>
-            <UserCircle color={currentColors.text} size={36} strokeWidth={1.5} />
-          </TouchableOpacity>
         </View>
       </View>
 

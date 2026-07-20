@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../../components/Typography';
 import { Button } from '../../../../components/Button';
 import { useThemeStore } from '../../../../store/useThemeStore';
+import { mangakaApi } from '../../../../api/mangaka';
 import { colors } from '../../../../theme/colors';
 import { ChevronLeft, Edit3, Image as ImageIcon, CheckCircle, MessageSquare } from 'lucide-react-native';
 
@@ -24,9 +25,21 @@ export default function ChapterDetail() {
     try {
       setLoading(true);
       const data = await mangakaApi.getChapterDetail(chapterId as string);
-      setChapter(data);
-    } catch (error) {
+      if (data) {
+        try {
+          const progressData = await mangakaApi.getChapterProgress(chapterId as string);
+          setChapter({ ...data, ...progressData });
+        } catch (progressError) {
+          console.log('Error fetching progress', progressError);
+          setChapter(data);
+        }
+      } else {
+        throw new Error('Data is empty');
+      }
+    } catch (error: any) {
       console.log('Error fetching chapter detail', error);
+      Alert.alert('Lỗi', `Không thể tải dữ liệu Chapter: ${error?.response?.data?.message || error.message}`);
+      setChapter(null);
     } finally {
       setLoading(false);
     }
@@ -69,7 +82,7 @@ export default function ChapterDetail() {
           <Typography variant="h2" numberOfLines={1}>
             {chapter?.chapterNumber ? `Ch. ${chapter.chapterNumber} - ` : ''}{chapter?.title || 'Chi tiết Chapter'}
           </Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Status: {chapter?.status || 'Unknown'}</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Trạng thái: {chapter?.status || 'Chưa rõ'}</Typography>
         </View>
       </View>
 
@@ -79,50 +92,70 @@ export default function ChapterDetail() {
           <View style={[styles.statsRow, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
             <View style={styles.statBox}>
               <Typography variant="h3">{chapter.totalPages || 0}</Typography>
-              <Typography variant="caption" color={currentColors.textSecondary}>Total Pages</Typography>
+              <Typography variant="caption" color={currentColors.textSecondary}>Tổng số trang</Typography>
             </View>
             <View style={[styles.statBox, { borderLeftWidth: 1, borderRightWidth: 1, borderColor: currentColors.border }]}>
               <Typography variant="h3">{chapter.pagesReady || 0}</Typography>
-              <Typography variant="caption" color={currentColors.success}>Pages Ready</Typography>
+              <Typography variant="caption" color={currentColors.success}>Trang đã xong</Typography>
             </View>
             <View style={styles.statBox}>
               <Typography variant="h3">{chapter.pagesPending || 0}</Typography>
-              <Typography variant="caption" color={currentColors.warning}>Pages Pending</Typography>
+              <Typography variant="caption" color={currentColors.warning}>Trang đang chờ</Typography>
             </View>
           </View>
         )}
 
-        <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Workflow</Typography>
+        <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Quy trình làm việc</Typography>
         
         <TouchableOpacity 
           style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
-          onPress={() => router.push('/(mangaka-tabs)/series_stack/name-workspace')}
+          onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/name-workspace', params: { chapterId } })}
         >
           <Edit3 color={currentColors.primary} size={24} />
           <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold">Name Workspace</Typography>
-            <Typography variant="caption" color={currentColors.textSecondary}>Upload and review draft pages</Typography>
+            <Typography variant="bodyBold">Không gian làm Name</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Tải lên và duyệt các trang nháp</Typography>
           </View>
           <ChevronLeft color={currentColors.textSecondary} size={20} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+        <TouchableOpacity 
+          style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
+          onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/chapter/pages', params: { chapterId } })}
+        >
           <ImageIcon color={currentColors.tertiary} size={24} />
           <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold">Composite & Inking</Typography>
-            <Typography variant="caption" color={currentColors.textSecondary}>Manage assistant tasks</Typography>
+            <Typography variant="bodyBold">Trang & Công việc trợ lý</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Upload trang, xem tiến độ task</Typography>
+          </View>
+          {chapter?.pagesPending > 0 && (
+            <View style={[styles.badge, { backgroundColor: currentColors.warning }]}>
+              <Typography variant="caption" color="#fff">{chapter.pagesPending}</Typography>
+            </View>
+          )}
+          <ChevronLeft color={currentColors.textSecondary} size={20} style={{ transform: [{ rotate: '180deg' }] }} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
+          onPress={() => router.push({ pathname: '/(mangaka-tabs)/deadline' })}
+        >
+          <MessageSquare color={currentColors.secondary} size={24} />
+          <View style={{ flex: 1 }}>
+            <Typography variant="bodyBold">Thương lượng Deadline</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Xin gia hạn hoặc xem yêu cầu</Typography>
           </View>
           <ChevronLeft color={currentColors.textSecondary} size={20} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
 
         {chapter?.editorCommentsCount > 0 && (
           <>
-            <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Feedback & Review</Typography>
+            <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Phản hồi & Đánh giá</Typography>
             <TouchableOpacity style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
               <MessageSquare color={currentColors.secondary} size={24} />
               <View style={{ flex: 1 }}>
-                <Typography variant="bodyBold">Editor Comments</Typography>
-                <Typography variant="caption" color={currentColors.textSecondary}>{chapter.editorCommentsCount} new comments</Typography>
+                <Typography variant="bodyBold">Bình luận của Editor</Typography>
+                <Typography variant="caption" color={currentColors.textSecondary}>{chapter.editorCommentsCount} bình luận mới</Typography>
               </View>
               <View style={[styles.badge, { backgroundColor: currentColors.error }]}>
                 <Typography variant="caption" color="#fff">{chapter.editorCommentsCount}</Typography>
@@ -133,23 +166,39 @@ export default function ChapterDetail() {
 
       </ScrollView>
 
-      {chapter?.status !== 'PUBLISHED' && chapter?.status !== 'COMPLETED' && (
+      {chapter?.status !== 'PUBLISHED' && chapter?.status !== 'READY_FOR_PRINT' && (
         <View style={[styles.footer, { borderTopColor: currentColors.border }]}>
-          <Button 
-            title={chapter?.status === 'REVISING' ? "Nộp lại (Re-submit)" : "Nộp Chapter"} 
-            variant="primary" 
-            style={{ flex: 1 }} 
-            onPress={async () => {
-              try {
-                // Sẽ ném lỗi 409 TasksNotAllApproved hoặc RevisionNotResolved nếu chưa đủ điều kiện
-                await mangakaApi.submitChapter(chapterId as string); 
-                Alert.alert('Thành công', 'Đã nộp Chapter.');
-                fetchChapter();
-              } catch (e: any) {
-                Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
-              }
-            }}
-          />
+          {chapter?.status === 'EDITOR_REVISION' || chapter?.status === 'EDITOR_REVIEW' ? (
+            <Button 
+              title="Nộp lại cho Editor" 
+              variant="primary" 
+              style={{ flex: 1 }} 
+              onPress={async () => {
+                try {
+                  await mangakaApi.resubmitManuscript(chapterId as string); 
+                  Alert.alert('Thành công', 'Đã nộp lại Manuscript cho Editor.');
+                  fetchChapter();
+                } catch (e: any) {
+                  Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
+                }
+              }}
+            />
+          ) : chapter?.status === 'IN_PRODUCTION' || chapter?.status === 'DRAFT' ? (
+            <Button 
+              title="Nộp cho Editor" 
+              variant="primary" 
+              style={{ flex: 1 }} 
+              onPress={async () => {
+                try {
+                  await mangakaApi.submitManuscript(chapterId as string); 
+                  Alert.alert('Thành công', 'Đã nộp Manuscript cho Editor.');
+                  fetchChapter();
+                } catch (e: any) {
+                  Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
+                }
+              }}
+            />
+          ) : null}
         </View>
       )}
     </SafeAreaView>

@@ -21,7 +21,30 @@ export default function MySeries() {
     try {
       setLoading(true);
       const data = await mangakaApi.getMySeries({ status: statusFilter || undefined });
-      setSeries(data?.items || []);
+      const seriesList = data?.items || [];
+      
+      // Lấy số chương thực tế cho từng truyện
+      const seriesWithChapters = await Promise.all(
+        seriesList.map(async (s: any) => {
+          try {
+            const chapters = await mangakaApi.getChapters(s.id);
+            // API trả về { items: [...], total: ... }
+            const count = chapters?.total !== undefined ? chapters.total : (chapters?.items?.length || 0);
+            
+            let finalCoverUrl = s.coverImage || s.coverImageUrl;
+            if (s.coverImage && !s.coverImage.startsWith('http')) {
+              const signed = await mangakaApi.getSignedUrl(s.coverImage);
+              if (signed) finalCoverUrl = signed;
+            }
+            
+            return { ...s, chaptersCount: count, signedCoverUrl: finalCoverUrl };
+          } catch (e) {
+            return { ...s, chaptersCount: 0, signedCoverUrl: s.coverImage || s.coverImageUrl };
+          }
+        })
+      );
+      
+      setSeries(seriesWithChapters);
     } catch (e) {
       console.log('Error fetching my series', e);
     } finally {
@@ -36,10 +59,10 @@ export default function MySeries() {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[styles.card, { backgroundColor: currentColors.surface }]} 
-      onPress={() => router.push(`/(mangaka-tabs)/series_stack/${item.id}`)}
+      onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/[id]', params: { id: item.id } })}
     >
       <Image 
-        source={{ uri: item.coverImageUrl || 'https://via.placeholder.com/150' }} 
+        source={{ uri: item.signedCoverUrl || item.coverImageUrl || item.coverImage || 'https://via.placeholder.com/150' }} 
         style={styles.cover} 
         contentFit="cover"
       />

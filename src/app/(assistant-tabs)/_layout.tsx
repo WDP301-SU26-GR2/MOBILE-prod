@@ -34,11 +34,7 @@ export default function AssistantTabsLayout() {
       />
       <Tabs.Screen 
         name="profile" 
-        options={{ href: null }} 
-      />
-      <Tabs.Screen 
-        name="user-info" 
-        options={{ href: null }} 
+        options={{ title: 'Hồ sơ', tabBarIcon: ({ color, size }) => <UserCircle color={color} size={size} /> }} 
       />
     </Tabs>
   );

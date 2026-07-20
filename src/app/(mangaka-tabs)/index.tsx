@@ -56,9 +56,6 @@ export default function MangakaHome() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <Typography variant="h1">Dashboard</Typography>
-            <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/user-info')}>
-              <UserCircle color={currentColors.text} size={32} />
-            </TouchableOpacity>
           </View>
           <Typography variant="body" color={colors.textSecondary}>Tổng quan hoạt động</Typography>
         </View>
@@ -76,23 +73,38 @@ export default function MangakaHome() {
       )}
 
       <View style={styles.grid}>
-        <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/studio')}>
           <BookOpen color={currentColors.primary} size={24} style={{ marginBottom: 8 }} />
           <Typography variant="h2">{data?.studio?.length || 0}</Typography>
           <Typography variant="caption" color={currentColors.textSecondary}>Chapter Đang Làm</Typography>
-        </View>
+        </TouchableOpacity>
 
-        <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/inbox')}>
           <Clock color={currentColors.warning} size={24} style={{ marginBottom: 8 }} />
           <Typography variant="h2">{data?.unreadNotifications || 0}</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Thông báo chưa đọc</Typography>
-        </View>
+          <Typography variant="caption" color={currentColors.textSecondary}>Thông báo</Typography>
+        </TouchableOpacity>
 
-        <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.error, borderWidth: data?.openRevisionRequests > 0 ? 1 : 0 }]} onPress={() => router.push('/(mangaka-tabs)/review-inbox')}>
           <CheckSquare color={currentColors.error} size={24} style={{ marginBottom: 8 }} />
           <Typography variant="h2">{data?.openRevisionRequests || 0}</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Vòng sửa còn mở</Typography>
-        </View>
+          <Typography variant="caption" color={currentColors.textSecondary}>Cần duyệt</Typography>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/earnings')}>
+          <Typography variant="h2" style={{ color: currentColors.success }}>$$</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Thu nhập</Typography>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/ranking')}>
+          <Settings color={currentColors.tertiary || currentColors.primary} size={24} style={{ marginBottom: 8 }} />
+          <Typography variant="caption" color={currentColors.textSecondary}>Xếp hạng</Typography>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/deadline')}>
+          <Clock color={currentColors.secondary} size={24} style={{ marginBottom: 8 }} />
+          <Typography variant="caption" color={currentColors.textSecondary}>Thương lượng Deadline</Typography>
+        </TouchableOpacity>
       </View>
 
       {data?.studio && data.studio.length > 0 && (() => {

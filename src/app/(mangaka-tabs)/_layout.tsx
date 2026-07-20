@@ -75,8 +75,21 @@ export default function MangakaTabsLayout() {
           href: null,
         }} 
       />
+
       <Tabs.Screen 
-        name="user-info" 
+        name="earnings" 
+        options={{
+          href: null,
+        }} 
+      />
+      <Tabs.Screen 
+        name="review-inbox" 
+        options={{
+          href: null,
+        }} 
+      />
+      <Tabs.Screen 
+        name="deadline" 
         options={{
           href: null,
         }} 

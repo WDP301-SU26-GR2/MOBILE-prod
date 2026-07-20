@@ -18,10 +18,17 @@ export default function PublicHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [type, setType] = useState<string>(''); // empty means ALL
 
+  const [voteContext, setVoteContext] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const fetchCatalog = async () => {
     try {
-      const data = await publicApi.getCatalog({ publicationType: type || undefined });
-      setSeries(data?.items || []);
+      const [catalogData, voteData] = await Promise.all([
+        publicApi.getCatalog({ publicationType: type || undefined, q: searchQuery || undefined }),
+        publicApi.getVoteContext()
+      ]);
+      setSeries(catalogData?.items || []);
+      setVoteContext(voteData);
     } catch (e) {
       console.log('Fetch catalog error', e);
     } finally {
@@ -66,10 +73,24 @@ export default function PublicHome() {
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.header}>
         <Typography variant="h1">Danh mục Manga</Typography>
-        <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-          <Typography variant="body" color={currentColors.primary}>Đăng nhập</Typography>
+        <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={[styles.loginBtn, { backgroundColor: currentColors.primary }]}>
+          <Typography variant="caption" color="#FFF">Đăng nhập</Typography>
         </TouchableOpacity>
       </View>
+
+      {/* Vote Banner */}
+      {voteContext?.period && (
+        <TouchableOpacity 
+          style={[styles.voteBanner, { backgroundColor: currentColors.primary }]}
+          onPress={() => router.push('/(public)/vote')}
+        >
+          <View style={{ flex: 1 }}>
+            <Typography variant="bodyBold" color="#FFF">🗳️ Kỳ bình chọn #{voteContext.period.number} đang mở!</Typography>
+            <Typography variant="caption" color="rgba(255,255,255,0.8)">Nhấn để bình chọn series yêu thích của bạn</Typography>
+          </View>
+          <Typography variant="bodyBold" color="#FFF">›</Typography>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.filterRow}>
         {['', 'WEEKLY', 'MONTHLY', 'IRREGULAR'].map((filterType) => (
@@ -122,7 +143,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', 
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 16
+    paddingTop: 8,
+    paddingBottom: 12
+  },
+  loginBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  voteBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   filterRow: {
     flexDirection: 'row',
@@ -150,3 +186,4 @@ const styles = StyleSheet.create({
   cover: { width: 100, height: 140 },
   cardContent: { flex: 1, padding: 12, justifyContent: 'center', gap: 4 }
 });
+

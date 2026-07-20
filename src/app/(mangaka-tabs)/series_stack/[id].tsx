@@ -8,7 +8,7 @@ import { Button } from '../../../components/Button';
 import { mangakaApi } from '../../../api/mangaka';
 import { colors } from '../../../theme/colors';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { Edit2, Plus, Image as ImageIcon, CheckCircle, Clock, UserCheck } from 'lucide-react-native';
+import { Edit2, Plus, Image as ImageIcon, CheckCircle, Clock, UserCheck, ChevronLeft } from 'lucide-react-native';
 
 export default function SeriesDetailMangaka() {
   const { id } = useLocalSearchParams();
@@ -17,18 +17,28 @@ export default function SeriesDetailMangaka() {
   const currentColors = colors[theme];
   const [series, setSeries] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
 
   const fetchDetail = async () => {
     try {
       setLoading(true);
-      const [seriesData, chaptersData] = await Promise.all([
+      const [seriesData, chaptersData, contractsData] = await Promise.all([
         mangakaApi.getSeriesDetail(id as string),
-        mangakaApi.getChapters(id as string)
+        mangakaApi.getChapters(id as string),
+        mangakaApi.getContracts({ seriesId: id as string })
       ]);
-      setSeries(seriesData);
+      
+      let finalCoverUrl = seriesData.coverImageUrl || seriesData.coverImage;
+      if (finalCoverUrl && !finalCoverUrl.startsWith('http')) {
+        const signed = await mangakaApi.getSignedUrl(finalCoverUrl).catch(() => null);
+        if (signed) finalCoverUrl = signed;
+      }
+      
+      setSeries({ ...seriesData, signedCoverUrl: finalCoverUrl });
       setChapters(chaptersData?.items || chaptersData || []);
+      setContracts(contractsData?.items || contractsData || []);
     } catch (e) {
       console.log('Error fetching series detail or chapters', e);
     } finally {
@@ -76,8 +86,11 @@ export default function SeriesDetailMangaka() {
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <ScrollView>
         <View style={[styles.header, { backgroundColor: currentColors.surface }]}>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 8, alignSelf: 'flex-start' }}>
+            <ChevronLeft color={currentColors.text} size={28} />
+          </TouchableOpacity>
           <Image 
-            source={{ uri: series.coverImageUrl || 'https://via.placeholder.com/100' }} 
+            source={{ uri: series.signedCoverUrl || series.coverImageUrl || 'https://via.placeholder.com/100' }} 
             style={styles.cover} 
             contentFit="cover"
           />
@@ -168,7 +181,7 @@ export default function SeriesDetailMangaka() {
                   <TouchableOpacity 
                     key={chapter.id}
                     style={[styles.chapterCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
-                    onPress={() => router.push(`/(mangaka-tabs)/series_stack/chapter/${chapter.id}`)}
+                    onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/chapter/[chapterId]', params: { chapterId: chapter.id } })}
                   >
                     <View style={{ flex: 1 }}>
                       <Typography variant="bodyBold">
@@ -191,16 +204,25 @@ export default function SeriesDetailMangaka() {
                       </View>
                     </View>
                     {chapter.status === 'PUBLISHED' ? (
-                      <Typography variant="caption" color={currentColors.textSecondary}>
-                        {chapter.views || 0} lượt xem
-                      </Typography>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 4 }}>
+                          {chapter.views || 0} lượt xem
+                        </Typography>
+                        <Button 
+                          title="Xem" 
+                          variant="outline" 
+                          style={{ paddingHorizontal: 12, paddingVertical: 4 }} 
+                          textStyle={{ fontSize: 12 }} 
+                          onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/chapter/[chapterId]', params: { chapterId: chapter.id } })} 
+                        />
+                      </View>
                     ) : (
                       <Button 
                         title="Tiếp tục" 
                         variant="primary" 
                         style={{ paddingHorizontal: 12, paddingVertical: 6 }} 
                         textStyle={{ fontSize: 12 }} 
-                        onPress={() => router.push(`/(mangaka-tabs)/series_stack/chapter/${chapter.id}`)} 
+                        onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/chapter/[chapterId]', params: { chapterId: chapter.id } })} 
                       />
                     )}
                   </TouchableOpacity>
@@ -211,7 +233,32 @@ export default function SeriesDetailMangaka() {
 
           {activeTab === 'CONTRACTS' && (
             <View>
-              <Typography variant="body" color={currentColors.textSecondary}>Chưa có hợp đồng nào được tạo.</Typography>
+              <Typography variant="h3" color={currentColors.text} style={{ marginBottom: 16 }}>Danh sách Hợp đồng</Typography>
+              {contracts.length === 0 ? (
+                <Typography variant="body" color={currentColors.textSecondary}>Chưa có hợp đồng nào được tạo.</Typography>
+              ) : (
+                contracts.map((contract: any) => (
+                  <TouchableOpacity 
+                    key={contract.id}
+                    style={[styles.chapterCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
+                    onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/contract/[contractId]', params: { contractId: contract.id } })}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Typography variant="bodyBold">Hợp đồng: {contract.contractType}</Typography>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <Typography variant="caption" color={currentColors.primary}>{contract.status}</Typography>
+                        <Typography variant="caption" color={currentColors.textSecondary}> • Cập nhật: {new Date(contract.updatedAt || contract.createdAt).toLocaleDateString()}</Typography>
+                      </View>
+                    </View>
+                    <Button 
+                      title="Xem" 
+                      variant="outline" 
+                      style={{ paddingHorizontal: 16, paddingVertical: 8 }} 
+                      onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/contract/[contractId]', params: { contractId: contract.id } })}
+                    />
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
         </View>
