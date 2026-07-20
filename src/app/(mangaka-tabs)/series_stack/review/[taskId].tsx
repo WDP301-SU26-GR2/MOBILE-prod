@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Dimensions, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../../components/Typography';
 import { Button } from '../../../../components/Button';
 import { colors } from '../../../../theme/colors';
 import { Image } from 'expo-image';
+import { ChevronLeft } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -77,28 +79,36 @@ export default function CompositeReview() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Typography>Đang tải dữ liệu...</Typography>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!task) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Typography>Không tìm thấy bài nộp.</Typography>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Typography variant="h2">Duyệt bài Tổng hợp</Typography>
-        <Typography variant="body" color={colors.textSecondary}>
-          Nhiệm vụ: {task.title || 'Không rõ'}
-        </Typography>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
+          <ChevronLeft color={colors.text} size={28} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          <Typography variant="h2">Duyệt bài Tổng hợp</Typography>
+          <Typography variant="body" color={colors.textSecondary}>
+            Nhiệm vụ: {task.title || 'Không rõ'}
+          </Typography>
+        </View>
+      </View>
+      <ScrollView style={{ flex: 1 }}>
+        <View style={[styles.header, { borderBottomWidth: 0, paddingTop: 0 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <Image 
             source={{ uri: task.assistant?.avatar || 'https://via.placeholder.com/40' }} 
             style={{ width: 32, height: 32, borderRadius: 16 }} 
@@ -131,13 +141,21 @@ export default function CompositeReview() {
           />
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { 
+    padding: 16, 
+    backgroundColor: colors.surface, 
+    borderBottomWidth: 1, 
+    borderBottomColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
   content: { padding: 16 },
   imagePreview: { width: width - 32, height: (width - 32) * 1.33, backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: 24 },
   actions: { flexDirection: 'row', gap: 16 },

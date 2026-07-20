@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../../components/Typography';
 import { colors } from '../../../theme/colors';
@@ -33,7 +34,7 @@ export default function AssistantTasks() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h1">Nhiệm vụ của tôi</Typography>
       </View>
@@ -48,7 +49,7 @@ export default function AssistantTasks() {
           </Typography>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

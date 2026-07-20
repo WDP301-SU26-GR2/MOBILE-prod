@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../components/Typography';
 import { Button } from '../../../components/Button';
 import { colors } from '../../../theme/colors';
+import { ChevronLeft } from 'lucide-react-native';
 
 export default function TaskDetail() {
   const { id } = useLocalSearchParams();
@@ -18,24 +20,30 @@ export default function TaskDetail() {
 
   if (!task) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Typography color={colors.textSecondary}>Không tìm thấy nhiệm vụ.</Typography>
         <Button title="Quay lại" onPress={() => router.back()} style={{ marginTop: 16 }} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Typography variant="h2">{task.title}</Typography>
-        <Typography variant="body" color={colors.textSecondary}>Mangaka: {task.mangakaName}</Typography>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
+          <ChevronLeft color={colors.text} size={28} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          <Typography variant="h2" numberOfLines={1}>{task.title}</Typography>
+          <Typography variant="caption" color={colors.textSecondary}>Mangaka: {task.mangakaName}</Typography>
+        </View>
         <View style={styles.badge}>
           <Typography variant="caption" color="#fff">{task.status}</Typography>
         </View>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={{ flex: 1 }}>
+        <View style={styles.content}>
         <Typography variant="h3" style={{ marginBottom: 8 }}>Mô tả công việc</Typography>
         <Typography variant="body" style={{ marginBottom: 16, lineHeight: 24 }}>
           {task.description || 'Không có mô tả.'}
@@ -67,14 +75,22 @@ export default function TaskDetail() {
           }} 
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  badge: { alignSelf: 'flex-start', backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginTop: 8 },
+  header: { 
+    padding: 16, 
+    backgroundColor: colors.surface, 
+    borderBottomWidth: 1, 
+    borderBottomColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  badge: { alignSelf: 'flex-start', backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   content: { padding: 16 },
   referenceCard: { padding: 12, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border }
 });
