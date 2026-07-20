@@ -5,9 +5,12 @@ import { mangakaApi } from '../../api/mangaka';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { CheckSquare, Clock, Star, Users, Bell } from 'lucide-react-native';
+import { CheckSquare, Clock, Star, Users, Bell, UserCircle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function AssistantHome() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
@@ -40,12 +43,18 @@ export default function AssistantHome() {
   }
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: currentColors.background }]}
+    <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
+      <ScrollView 
+        style={{ flex: 1 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchDashboard(); }} />}
     >
       <View style={styles.header}>
-        <Typography variant="h1">Xin chào, {user?.name || 'Trợ lý'}</Typography>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <Typography variant="h1">Dashboard</Typography>
+          <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/user-info')}>
+            <UserCircle color={currentColors.text} size={32} />
+          </TouchableOpacity>
+        </View>
         <Typography variant="body" color={colors.textSecondary}>Bạn đã sẵn sàng làm việc chưa?</Typography>
       </View>
 
@@ -117,6 +126,7 @@ export default function AssistantHome() {
         </View>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

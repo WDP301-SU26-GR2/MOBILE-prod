@@ -7,7 +7,7 @@ import { mangakaApi } from '../../api/mangaka';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { AlertTriangle, Clock, BookOpen, CheckSquare, UserCircle } from 'lucide-react-native';
+import { AlertTriangle, Clock, BookOpen, CheckSquare, Settings, UserCircle } from 'lucide-react-native';
 
 export default function MangakaHome() {
   const router = useRouter();
@@ -55,9 +55,12 @@ export default function MangakaHome() {
       >
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <Typography variant="h1">Xin chào, {user?.name || 'Mangaka'}</Typography>
+            <Typography variant="h1">Dashboard</Typography>
+            <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/user-info')}>
+              <UserCircle color={currentColors.text} size={32} />
+            </TouchableOpacity>
           </View>
-          <Typography variant="body" color={colors.textSecondary}>Dưới đây là các thông tin mới nhất về xưởng của bạn hôm nay.</Typography>
+          <Typography variant="body" color={colors.textSecondary}>Tổng quan hoạt động</Typography>
         </View>
 
       {data?.rankings?.some((r: any) => r.isAtRisk || r.riskLevel === 'SEVERE' || r.riskLevel === 'MEDIUM') && (

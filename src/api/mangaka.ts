@@ -85,6 +85,11 @@ export const mangakaApi = {
     const res = await apiClient.post(`/contracts/${id}/sign`, { otp });
     return res.data;
   },
+  // Tasks
+  getTasks: async (params?: any) => {
+    const res = await apiClient.get('/tasks', { params });
+    return res.data?.data;
+  },
   // Review Tasks
   getReviewTask: async (taskId: string) => {
     const res = await apiClient.get(`/tasks/${taskId}/review`);

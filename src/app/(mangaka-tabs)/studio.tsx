@@ -26,9 +26,8 @@ export default function Studio() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      // Wait, there's no getTasks in API? Let's assume we'll just not show it if there's no data
-      const data = await mangakaApi.getOverview(); // Or some getTasks if added
-      setTasks(data?.tasks || []);
+      const data = await mangakaApi.getTasks();
+      setTasks(data?.items || data || []);
     } catch (error) {
       console.log('Error fetching tasks', error);
       setTasks([]);
