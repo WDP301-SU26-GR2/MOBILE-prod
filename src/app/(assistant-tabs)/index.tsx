@@ -49,35 +49,41 @@ export default function AssistantHome() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchDashboard(); }} />}
     >
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <Typography variant="h1">Dashboard</Typography>
-          <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/user-info')}>
-            <UserCircle color={currentColors.text} size={32} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Typography variant="h1" numberOfLines={1}>Xin chào, {user?.name || 'Trợ lý'} 👋</Typography>
+            <Typography variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>Bạn đã sẵn sàng làm việc chưa?</Typography>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/user-info')} style={styles.profileIconWrapper}>
+            <UserCircle color={currentColors.text} size={36} strokeWidth={1.5} />
           </TouchableOpacity>
         </View>
-        <Typography variant="body" color={colors.textSecondary}>Bạn đã sẵn sàng làm việc chưa?</Typography>
       </View>
 
       {/* Thẻ Uy tín */}
       {data?.reputation && (
-        <View style={[styles.reputationCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h3">Đánh giá chung</Typography>
+        <View style={[styles.reputationCard, { backgroundColor: theme === 'dark' ? '#1E293B' : '#F8FAFC', borderColor: currentColors.border }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Typography variant="h3">Uy tín & Đánh giá</Typography>
             {data.reputation.isRecommended && (
               <View style={[styles.badge, { backgroundColor: currentColors.success }]}>
-                <Typography variant="caption" color="#FFF">Được Đề Cử</Typography>
+                <Typography variant="caption" color="#FFF" style={{ fontWeight: 'bold' }}>Được Đề Cử 🌟</Typography>
               </View>
             )}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 16 }}>
-            <View style={{ alignItems: 'center', flexDirection: 'row', gap: 4 }}>
-              <Star color="#FFD700" fill="#FFD700" size={24} />
+          
+          <View style={styles.reputationStats}>
+            <View style={styles.reputationItem}>
+              <Star color="#FFD700" fill="#FFD700" size={32} style={{ marginBottom: 4 }} />
               <Typography variant="h2">{data.reputation.ratingAvg ? data.reputation.ratingAvg.toFixed(1) : 'N/A'}</Typography>
-              <Typography variant="caption" color={currentColors.textSecondary}>({data.reputation.ratingCount})</Typography>
+              <Typography variant="caption" color={currentColors.textSecondary}>({data.reputation.ratingCount} lượt)</Typography>
             </View>
-            <View style={{ alignItems: 'center' }}>
-              <Typography variant="h2" color={currentColors.primary}>{data.reputation.reputationScore || 0}</Typography>
-              <Typography variant="caption" color={currentColors.textSecondary}>Điểm Uy Tín</Typography>
+            
+            <View style={styles.reputationDivider} />
+            
+            <View style={styles.reputationItem}>
+              <Typography variant="h2" color={currentColors.primary} style={{ fontSize: 32, marginBottom: 4 }}>{data.reputation.reputationScore || 0}</Typography>
+              <Typography variant="bodyBold" color={currentColors.text}>Điểm Uy Tín</Typography>
             </View>
           </View>
         </View>
@@ -133,21 +139,65 @@ export default function AssistantHome() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { padding: 24, paddingBottom: 16 },
+  profileIconWrapper: {
+    padding: 4,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 24,
+    marginLeft: 12,
+  },
   reputationCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  reputationStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 12,
+    borderRadius: 12,
+  },
+  reputationItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  reputationDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(150,150,150,0.2)',
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 16 },
-  statCard: { flex: 1, padding: 16, borderRadius: 12, elevation: 2 },
-  section: { padding: 24 },
-  taskCard: { padding: 16, borderRadius: 12, elevation: 2 }
+  statCard: { 
+    flex: 1, 
+    padding: 20, 
+    borderRadius: 16, 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2 
+  },
+  section: { padding: 20 },
+  taskCard: { 
+    padding: 20, 
+    borderRadius: 16, 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2 
+  }
 });

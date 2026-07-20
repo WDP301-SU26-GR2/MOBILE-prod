@@ -9,20 +9,12 @@ export default function AssistantTabsLayout() {
   const currentColors = colors[theme];
   const router = useRouter();
 
-  const HeaderProfileIcon = () => (
-    <TouchableOpacity onPress={() => router.push('/(assistant-tabs)/profile')} style={{ marginRight: 16 }}>
-      <UserCircle color={currentColors.text} size={24} />
-    </TouchableOpacity>
-  );
-
   return (
     <Tabs screenOptions={{
-      headerStyle: { backgroundColor: currentColors.surface },
-      headerTintColor: currentColors.text,
+      headerShown: false,
       tabBarStyle: { backgroundColor: currentColors.surface, borderTopColor: currentColors.border },
       tabBarActiveTintColor: currentColors.primary,
       tabBarInactiveTintColor: currentColors.textSecondary,
-      headerRight: () => <HeaderProfileIcon />
     }}>
       <Tabs.Screen 
         name="index" 
