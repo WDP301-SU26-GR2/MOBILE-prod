@@ -18,10 +18,10 @@ export default function MangakaHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<any>(null);
 
-  const fetchOverview = async () => {
+  const fetchDashboard = async () => {
     try {
-      const overviewData = await mangakaApi.getOverview();
-      setData(overviewData);
+      const dashData = await mangakaApi.getMangakaDashboard();
+      setData(dashData);
     } catch (e) {
       console.log('Error fetching overview', e);
       setData(null);
@@ -32,12 +32,12 @@ export default function MangakaHome() {
   };
 
   useEffect(() => {
-    fetchOverview();
+    fetchDashboard();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchOverview();
+    fetchDashboard();
   };
 
   if (loading) {
@@ -60,13 +60,13 @@ export default function MangakaHome() {
           <Typography variant="body" color={colors.textSecondary}>Dưới đây là các thông tin mới nhất về xưởng của bạn hôm nay.</Typography>
         </View>
 
-      {data?.atRisk && (
+      {data?.rankings?.some((r: any) => r.isAtRisk || r.riskLevel === 'SEVERE' || r.riskLevel === 'MEDIUM') && (
         <View style={[styles.warningCard, { backgroundColor: theme === 'dark' ? '#3B1A1A' : '#FFEBEB' }]}>
           <AlertTriangle color={currentColors.error} size={24} />
           <View style={{ flex: 1 }}>
             <Typography variant="bodyBold" color={currentColors.error}>Cảnh báo Xếp hạng</Typography>
             <Typography variant="caption" color={currentColors.error}>
-              Một trong các truyện của bạn đang bị tụt hạng. Hãy cân nhắc một tình tiết mới!
+              Một trong các truyện của bạn đang có nguy cơ tụt hạng. Hãy kiểm tra lại!
             </Typography>
           </View>
         </View>
@@ -75,32 +75,37 @@ export default function MangakaHome() {
       <View style={styles.grid}>
         <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
           <BookOpen color={currentColors.primary} size={24} style={{ marginBottom: 8 }} />
-          <Typography variant="h2">{data?.activeSeries || 0}</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Truyện Đang Tiến Hành</Typography>
-        </View>
-
-        <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
-          <Clock color={currentColors.warning} size={24} style={{ marginBottom: 8 }} />
-          <Typography variant="h2">{data?.chaptersInProgress || 0}</Typography>
+          <Typography variant="h2">{data?.studio?.length || 0}</Typography>
           <Typography variant="caption" color={currentColors.textSecondary}>Chapter Đang Làm</Typography>
         </View>
 
         <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
-          <CheckSquare color={currentColors.success} size={24} style={{ marginBottom: 8 }} />
-          <Typography variant="h2">{data?.tasksPendingReview || 0}</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Bài Cần Duyệt</Typography>
+          <Clock color={currentColors.warning} size={24} style={{ marginBottom: 8 }} />
+          <Typography variant="h2">{data?.unreadNotifications || 0}</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Thông báo chưa đọc</Typography>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
+          <CheckSquare color={currentColors.error} size={24} style={{ marginBottom: 8 }} />
+          <Typography variant="h2">{data?.openRevisionRequests || 0}</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Vòng sửa còn mở</Typography>
         </View>
       </View>
 
-      {data?.nearestDeadlineTitle && data?.nearestDeadlineDate && (
-        <View style={styles.section}>
-          <Typography variant="h3" style={{ marginBottom: 12 }}>Hạn Chót Gần Nhất</Typography>
-          <View style={[styles.deadlineCard, { backgroundColor: currentColors.surface, borderLeftColor: currentColors.error }]}>
-            <Typography variant="bodyBold">{data.nearestDeadlineTitle}</Typography>
-            <Typography variant="body" color={currentColors.error}>Hạn: {new Date(data.nearestDeadlineDate).toLocaleDateString()}</Typography>
+      {data?.studio && data.studio.length > 0 && (() => {
+        const sortedStudio = [...data.studio].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+        const nearest = sortedStudio[0];
+        if (!nearest.deadline) return null;
+        return (
+          <View style={styles.section}>
+            <Typography variant="h3" style={{ marginBottom: 12 }}>Hạn Chót Gần Nhất</Typography>
+            <View style={[styles.deadlineCard, { backgroundColor: currentColors.surface, borderLeftColor: currentColors.error }]}>
+              <Typography variant="bodyBold">{nearest.seriesTitle} - Ch. {nearest.chapterNumber}</Typography>
+              <Typography variant="body" color={currentColors.error}>Hạn: {new Date(nearest.deadline).toLocaleDateString()}</Typography>
+            </View>
           </View>
-        </View>
-      )}
+        );
+      })()}
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,9 +1,22 @@
 import { apiClient } from './client';
 
 export const mangakaApi = {
-  // Trang chủ
+  // Trang chủ (Overview cũ, vẫn dùng cho S-MGK-16)
   getOverview: async () => {
     const res = await apiClient.get('/studio/overview');
+    return res.data?.data;
+  },
+  // Dashboards (Spec 18)
+  getMangakaDashboard: async () => {
+    const res = await apiClient.get('/dashboard/mangaka');
+    return res.data?.data;
+  },
+  getAssistantDashboard: async () => {
+    const res = await apiClient.get('/dashboard/assistant');
+    return res.data?.data;
+  },
+  getMangakaEarningsDashboard: async () => {
+    const res = await apiClient.get('/dashboard/mangaka/earnings');
     return res.data?.data;
   },
   // Lấy danh sách series của mình
@@ -26,6 +39,10 @@ export const mangakaApi = {
     const res = await apiClient.get(`/chapters/${chapterId}`);
     return res.data?.data;
   },
+  submitChapter: async (chapterId: string) => {
+    const res = await apiClient.post(`/chapters/${chapterId}/submit`);
+    return res.data;
+  },
   // Tạo Proposal
   createProposal: async (payload: any) => {
     const res = await apiClient.post('/series/proposals', payload);
@@ -34,6 +51,11 @@ export const mangakaApi = {
   // Nộp Proposal
   submitProposal: async (seriesId: string) => {
     const res = await apiClient.post(`/series/${seriesId}/submit`);
+    return res.data;
+  },
+  // Mở lại Proposal bị huỷ/từ chối
+  reopenSeries: async (seriesId: string) => {
+    const res = await apiClient.post(`/series/${seriesId}/reopen`);
     return res.data;
   },
   // Notifications

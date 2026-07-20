@@ -98,9 +98,15 @@ export default function CompositeReview() {
         <Typography variant="body" color={colors.textSecondary}>
           Nhiệm vụ: {task.title || 'Không rõ'}
         </Typography>
-        <Typography variant="body" color={colors.textSecondary}>
-          Trợ lý: {task.assistantName || 'Không rõ'}
-        </Typography>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <Image 
+            source={{ uri: task.assistant?.avatar || 'https://via.placeholder.com/40' }} 
+            style={{ width: 32, height: 32, borderRadius: 16 }} 
+          />
+          <Typography variant="body" color={colors.textSecondary}>
+            Trợ lý: {task.assistant?.displayName || task.assistantName || 'Không rõ'}
+          </Typography>
+        </View>
       </View>
 
       <View style={styles.content}>

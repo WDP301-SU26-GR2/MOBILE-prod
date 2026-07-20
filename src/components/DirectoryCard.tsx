@@ -10,6 +10,7 @@ interface DirectoryCardProps {
   avatar?: string;
   roles: string[];
   reputationScore?: number;
+  ratingAvg?: number;
   ratingCount?: number;
   isRecommended?: boolean;
   availability?: string;
@@ -22,6 +23,7 @@ export const DirectoryCard: React.FC<DirectoryCardProps> = ({
   avatar,
   roles,
   reputationScore = 0,
+  ratingAvg,
   ratingCount = 0,
   isRecommended,
   availability,
@@ -60,10 +62,10 @@ export const DirectoryCard: React.FC<DirectoryCardProps> = ({
         <View style={styles.rating}>
           <Star size={16} color="#FDB022" fill="#FDB022" />
           <Typography variant="bodyMedium" font="bodyMedium" style={styles.ratingText}>
-            {reputationScore.toFixed(1)}
+            {ratingAvg ? ratingAvg.toFixed(1) : 'N/A'}
           </Typography>
           <Typography variant="bodySmall" color={currentColors.textSecondary}>
-            ({ratingCount} reviews)
+            ({ratingCount}) • Uy tín: {reputationScore}
           </Typography>
         </View>
         <View style={styles.rightFooter}>

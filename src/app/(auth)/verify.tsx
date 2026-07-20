@@ -10,6 +10,7 @@ import { colors } from '../../theme/colors';
 
 export default function VerifyScreen() {
   const [code, setCode] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -24,7 +25,16 @@ export default function VerifyScreen() {
       Alert.alert('Thành công', 'Đã xác thực tài khoản! Vui lòng đăng nhập.');
       router.replace('/(auth)/login');
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Xác thực thất bại');
+      const errRes = error.response?.data;
+      if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
+        const newErrors: Record<string, string> = {};
+        errRes.errors.forEach((e: any) => {
+          if (e.path) newErrors[e.path] = e.message;
+        });
+        setFieldErrors(newErrors);
+      } else {
+        Alert.alert('Lỗi', errRes?.message || 'Xác thực thất bại');
+      }
     } finally {
       setLoading(false);
     }
@@ -32,6 +42,7 @@ export default function VerifyScreen() {
 
   const handleCodeChange = (text: string) => {
     setCode(text);
+    if (fieldErrors.code) setFieldErrors(prev => ({ ...prev, code: '' }));
     if (text.length === 6) {
       handleVerify(text);
     }
@@ -54,6 +65,7 @@ export default function VerifyScreen() {
           label="Mã Xác Thực"
           placeholder="Nhập mã 6 số"
           value={code}
+          error={fieldErrors.code}
           onChangeText={handleCodeChange}
           keyboardType="number-pad"
           maxLength={6}

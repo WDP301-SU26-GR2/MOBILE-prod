@@ -83,6 +83,7 @@ export default function AssistantsScreen() {
               name={item.displayName || 'Unknown'}
               roles={item.specializations || []}
               reputationScore={item.reputationScore}
+              ratingAvg={item.ratingAvg}
               ratingCount={item.ratingCount}
               isRecommended={item.isRecommended}
               availability={item.availabilityStatus}

@@ -17,6 +17,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setAuth } = useAuthStore();
@@ -42,7 +43,16 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.log('Login failed', error);
-      Alert.alert('Lỗi Đăng nhập', error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      const errRes = error.response?.data;
+      if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
+        const newErrors: Record<string, string> = {};
+        errRes.errors.forEach((e: any) => {
+          if (e.path) newErrors[e.path] = e.message;
+        });
+        setFieldErrors(newErrors);
+      } else {
+        Alert.alert('Lỗi Đăng nhập', errRes?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
     } finally {
       setLoading(false);
     }
@@ -103,7 +113,11 @@ export default function LoginScreen() {
           label="Email"
           placeholder="Nhập email của bạn"
           value={email}
-          onChangeText={setEmail}
+          error={fieldErrors.email}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
+          }}
           keyboardType="email-address"
           autoCapitalize="none"
           leftIcon={<Mail size={20} color={currentColors.textSecondary} />}
@@ -112,7 +126,11 @@ export default function LoginScreen() {
           label="Mật khẩu"
           placeholder="Nhập mật khẩu của bạn"
           value={password}
-          onChangeText={setPassword}
+          error={fieldErrors.password}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+          }}
           secureTextEntry
           leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
         />

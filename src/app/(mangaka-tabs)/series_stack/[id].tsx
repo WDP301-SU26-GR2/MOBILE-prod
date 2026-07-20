@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -8,7 +8,7 @@ import { Button } from '../../../components/Button';
 import { mangakaApi } from '../../../api/mangaka';
 import { colors } from '../../../theme/colors';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { Edit2, Plus, Image as ImageIcon, CheckCircle, Clock } from 'lucide-react-native';
+import { Edit2, Plus, Image as ImageIcon, CheckCircle, Clock, UserCheck } from 'lucide-react-native';
 
 export default function SeriesDetailMangaka() {
   const { id } = useLocalSearchParams();
@@ -58,6 +58,19 @@ export default function SeriesDetailMangaka() {
   }
 
   const isProposal = series.status === 'DRAFT' || series.status === 'IN_REVIEW' || series.status === 'PROPOSAL_REVISION';
+  const isAbandoned = series.status === 'ABANDONED' || series.status === 'WITHDRAWN';
+
+  const handleReopen = async () => {
+    try {
+      setLoading(true);
+      await mangakaApi.reopenSeries(series.id);
+      Alert.alert('Thành công', 'Đã chuyển thành Bản nháp, vui lòng nộp lại.');
+      fetchDetail();
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.response?.data?.message || 'Lỗi nộp lại');
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
@@ -72,6 +85,12 @@ export default function SeriesDetailMangaka() {
             <Typography variant="h2" color={currentColors.text}>{series.title}</Typography>
             <View style={[styles.badge, { backgroundColor: currentColors.primary }]}>
               <Typography variant="caption" color="#fff">{series.status}</Typography>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <UserCheck size={14} color={currentColors.textSecondary} />
+              <Typography variant="caption" color={currentColors.textSecondary}>
+                Editor phụ trách: {series.editor ? series.editor.displayName : 'Đang chờ Editor nhận'}
+              </Typography>
             </View>
           </View>
         </View>
@@ -109,6 +128,21 @@ export default function SeriesDetailMangaka() {
                     Bản nháp đang chờ nộp.
                   </Typography>
                   <Button title="Nộp Đề xuất" onPress={() => mangakaApi.submitProposal(series.id)} />
+                </View>
+              )}
+
+              {isAbandoned && (
+                <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+                  <Typography variant="bodyMedium" color={currentColors.error} style={{ marginBottom: 16 }}>
+                    Đề xuất đã bị từ chối hoặc thu hồi. Bạn có thể nộp lại.
+                  </Typography>
+                  <Button 
+                    title="Nộp lại" 
+                    onPress={() => Alert.alert('Xác nhận', 'Chuyển series này về Bản nháp?', [
+                      { text: 'Hủy', style: 'cancel' },
+                      { text: 'Đồng ý', onPress: handleReopen }
+                    ])} 
+                  />
                 </View>
               )}
 

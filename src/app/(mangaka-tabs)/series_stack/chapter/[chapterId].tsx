@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../../components/Typography';
@@ -75,19 +75,19 @@ export default function ChapterDetail() {
 
       <ScrollView style={styles.content}>
         {/* Only show stats if backend provides them */}
-        {(chapter?.totalPages !== undefined || chapter?.assistantCount !== undefined || chapter?.progress !== undefined) && (
+        {(chapter?.totalPages !== undefined || chapter?.pagesReady !== undefined) && (
           <View style={[styles.statsRow, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
             <View style={styles.statBox}>
               <Typography variant="h3">{chapter.totalPages || 0}</Typography>
               <Typography variant="caption" color={currentColors.textSecondary}>Total Pages</Typography>
             </View>
             <View style={[styles.statBox, { borderLeftWidth: 1, borderRightWidth: 1, borderColor: currentColors.border }]}>
-              <Typography variant="h3">{chapter.assistantCount || 0}</Typography>
-              <Typography variant="caption" color={currentColors.textSecondary}>Assistants</Typography>
+              <Typography variant="h3">{chapter.pagesReady || 0}</Typography>
+              <Typography variant="caption" color={currentColors.success}>Pages Ready</Typography>
             </View>
             <View style={styles.statBox}>
-              <Typography variant="h3">{chapter.progress || 0}%</Typography>
-              <Typography variant="caption" color={currentColors.textSecondary}>Progress</Typography>
+              <Typography variant="h3">{chapter.pagesPending || 0}</Typography>
+              <Typography variant="caption" color={currentColors.warning}>Pages Pending</Typography>
             </View>
           </View>
         )}
@@ -133,9 +133,23 @@ export default function ChapterDetail() {
 
       </ScrollView>
 
-      {chapter?.status !== 'PUBLISHED' && (
+      {chapter?.status !== 'PUBLISHED' && chapter?.status !== 'COMPLETED' && (
         <View style={[styles.footer, { borderTopColor: currentColors.border }]}>
-          <Button title="Submit for Final Review" variant="primary" style={{ flex: 1 }} />
+          <Button 
+            title={chapter?.status === 'REVISING' ? "Nộp lại (Re-submit)" : "Nộp Chapter"} 
+            variant="primary" 
+            style={{ flex: 1 }} 
+            onPress={async () => {
+              try {
+                // Sẽ ném lỗi 409 TasksNotAllApproved hoặc RevisionNotResolved nếu chưa đủ điều kiện
+                await mangakaApi.submitChapter(chapterId as string); 
+                Alert.alert('Thành công', 'Đã nộp Chapter.');
+                fetchChapter();
+              } catch (e: any) {
+                Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
+              }
+            }}
+          />
         </View>
       )}
     </SafeAreaView>

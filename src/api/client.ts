@@ -89,8 +89,20 @@ apiClient.interceptors.response.use(
         router.replace('/(auth)/login');
       }
     }
+    
+    // Check for specific backend error codes
+    const backendCode = error.response?.data?.code;
+    const backendMessage = error.response?.data?.message;
+    
+    if (backendCode === 'Error.RefreshTokenAlreadyUsed') {
+      await useAuthStore.getState().logout();
+      Alert.alert('Session Expired', 'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.');
+      router.replace('/(auth)/login');
+      return Promise.reject(error);
+    }
+    
     // Log network errors (using console.warn to avoid React Native Red Box)
-    console.warn('[Network Error]:', error?.response?.status, error?.config?.url, error?.message);
+    console.warn('[Network Error]:', error?.response?.status, backendCode || error?.message, backendMessage);
     
     return Promise.reject(error);
   }

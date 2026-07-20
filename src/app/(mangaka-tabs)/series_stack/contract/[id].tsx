@@ -78,9 +78,9 @@ export default function ContractDetail() {
           <View style={styles.document}>
             <Typography variant="h3" style={{ textAlign: 'center', marginBottom: 16 }}>HỢP ĐỒNG HỢP TÁC</Typography>
             <Typography variant="body" style={styles.docText}>
-              Bên A (Nhà xuất bản): {contract.editorName}{'\n'}
-              Bên B (Tác giả): {contract.authorName || 'Mangaka'}{'\n\n'}
-              Hai bên thỏa thuận xuất bản tác phẩm "{contract.seriesName}" với mức phân chia bản quyền là {contract.royaltyRate || '---'} doanh thu cho Bên B.
+              Bên A (Nhà xuất bản): {contract.editor?.displayName || 'Chưa phân công'}{'\n'}
+              Bên B (Tác giả): {contract.mangaka?.displayName || 'Tác giả'}{'\n\n'}
+              Hai bên thỏa thuận xuất bản tác phẩm "{contract.series?.title || 'Không rõ'}" với tỷ lệ sở hữu của Bên B là {contract.mangakaOwnershipPct || 0}%.
               {'\n\n'}... (Nội dung chi tiết hợp đồng) ...
             </Typography>
           </View>

@@ -23,6 +23,7 @@ export default function CreateProposal() {
     demographic: 'SHONEN',
     estimatedLength: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleNext = () => {
     if (step < 4) setStep(step + 1);
@@ -40,7 +41,17 @@ export default function CreateProposal() {
       router.back();
     } catch (e: any) {
       console.log('Error creating proposal', e);
-      Alert.alert('Lỗi', e.response?.data?.message || 'Tạo đề xuất thất bại');
+      const errRes = e.response?.data;
+      if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
+        const newErrors: Record<string, string> = {};
+        errRes.errors.forEach((err: any) => {
+          if (err.path) newErrors[err.path] = err.message;
+        });
+        setFieldErrors(newErrors);
+        setStep(1); // Quay lại bước 1 nếu có lỗi form
+      } else {
+        Alert.alert('Lỗi', errRes?.message || 'Tạo đề xuất thất bại');
+      }
     } finally {
       setLoading(false);
     }
@@ -64,13 +75,21 @@ export default function CreateProposal() {
               <TextInput
                 label="Tên truyện"
                 value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                error={fieldErrors.title}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, title: text });
+                  if (fieldErrors.title) setFieldErrors(prev => ({ ...prev, title: '' }));
+                }}
                 placeholder="Nhập tên truyện..."
               />
               <TextInput
                 label="Tóm tắt"
                 value={formData.synopsis}
-                onChangeText={(text) => setFormData({ ...formData, synopsis: text })}
+                error={fieldErrors.synopsis}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, synopsis: text });
+                  if (fieldErrors.synopsis) setFieldErrors(prev => ({ ...prev, synopsis: '' }));
+                }}
                 placeholder="Tóm tắt ngắn gọn..."
                 multiline
                 style={{ height: 100 }}
@@ -97,7 +116,11 @@ export default function CreateProposal() {
               <TextInput
                 label="Đối tượng (Demographic)"
                 value={formData.demographic}
-                onChangeText={(text) => setFormData({ ...formData, demographic: text })}
+                error={fieldErrors.demographic}
+                onChangeText={(text) => {
+                  setFormData({ ...formData, demographic: text });
+                  if (fieldErrors.demographic) setFieldErrors(prev => ({ ...prev, demographic: '' }));
+                }}
                 placeholder="SHONEN, SHOJO, SEINEN..."
                 style={{ marginTop: 16 }}
               />

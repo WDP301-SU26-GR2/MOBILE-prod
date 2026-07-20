@@ -19,6 +19,7 @@ export default function RegisterScreen() {
     confirm_password: '',
     type: 'MANGAKA',
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { theme } = useThemeStore();
@@ -26,6 +27,9 @@ export default function RegisterScreen() {
 
   const updateForm = (key: string, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors(prev => ({ ...prev, [key]: '' }));
+    }
   };
 
   const handleRegister = async () => {
@@ -37,7 +41,16 @@ export default function RegisterScreen() {
         params: { email: formData.email }
       });
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Đăng ký thất bại');
+      const errRes = error.response?.data;
+      if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
+        const newErrors: Record<string, string> = {};
+        errRes.errors.forEach((e: any) => {
+          if (e.path) newErrors[e.path] = e.message;
+        });
+        setFieldErrors(newErrors);
+      } else {
+        Alert.alert('Lỗi', errRes?.message || 'Đăng ký thất bại');
+      }
     } finally {
       setLoading(false);
     }
@@ -90,6 +103,7 @@ export default function RegisterScreen() {
             label="Họ và Tên"
             placeholder="Nhập tên của bạn"
             value={formData.name}
+            error={fieldErrors.name}
             onChangeText={(text) => updateForm('name', text)}
             leftIcon={<User size={20} color={currentColors.textSecondary} />}
           />
@@ -97,6 +111,7 @@ export default function RegisterScreen() {
             label="Email"
             placeholder="Nhập email của bạn"
             value={formData.email}
+            error={fieldErrors.email}
             onChangeText={(text) => updateForm('email', text)}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -106,6 +121,7 @@ export default function RegisterScreen() {
             label="Số điện thoại"
             placeholder="Nhập số điện thoại (+84...)"
             value={formData.phoneNumber}
+            error={fieldErrors.phoneNumber}
             onChangeText={(text) => updateForm('phoneNumber', text)}
             keyboardType="phone-pad"
             leftIcon={<Phone size={20} color={currentColors.textSecondary} />}
@@ -114,6 +130,7 @@ export default function RegisterScreen() {
             label="Mật khẩu"
             placeholder="Tạo mật khẩu"
             value={formData.password}
+            error={fieldErrors.password}
             onChangeText={(text) => updateForm('password', text)}
             secureTextEntry
             leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
@@ -122,6 +139,7 @@ export default function RegisterScreen() {
             label="Xác nhận Mật khẩu"
             placeholder="Xác nhận lại mật khẩu"
             value={formData.confirm_password}
+            error={fieldErrors.confirm_password}
             onChangeText={(text) => updateForm('confirm_password', text)}
             secureTextEntry
             leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
