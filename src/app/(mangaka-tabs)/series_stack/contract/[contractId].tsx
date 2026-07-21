@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { mangakaApi } from '../../../../api/mangaka';
 import { colors } from '../../../../theme/colors';
 import { useThemeStore } from '../../../../store/useThemeStore';
 import { ChevronLeft, FileText, CheckCircle, Clock, ShieldCheck, PenTool } from 'lucide-react-native';
+import * as Linking from 'expo-linking';
 
 export default function ContractDetailMangaka() {
   const { contractId } = useLocalSearchParams();
@@ -21,6 +22,8 @@ export default function ContractDetailMangaka() {
   // OTP Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
 
   const fetchContract = async () => {
     try {
@@ -73,6 +76,36 @@ export default function ContractDetailMangaka() {
     }
   };
 
+  const handleRequestChanges = async () => {
+    const reason = changeReason.trim();
+    if (!reason || reason.length > 1000) {
+      Alert.alert('Lý do chưa hợp lệ', 'Hãy nhập lý do từ 1 đến 1000 ký tự.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await mangakaApi.requestContractChanges(contractId as string, reason);
+      setChangeReason('');
+      setShowChangeModal(false);
+      Alert.alert('Đã gửi yêu cầu', 'Editor sẽ nhận được lý do chỉnh sửa của bạn.');
+      await fetchContract();
+    } catch (error: any) {
+      Alert.alert('Không thể gửi yêu cầu', error.response?.data?.message || 'Vui lòng thử lại.');
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const pdf = await mangakaApi.getContractPdf(contractId as string);
+      if (!pdf?.downloadUrl) throw new Error('Không tìm thấy tệp PDF.');
+      await Linking.openURL(pdf.downloadUrl);
+    } catch (error: any) {
+      Alert.alert('Không thể tải PDF', error.response?.data?.message || error.message || 'Vui lòng thử lại.');
+    }
+  };
+
   if (loading && !contract) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background, justifyContent: 'center' }]}>
@@ -90,8 +123,9 @@ export default function ContractDetailMangaka() {
     );
   }
 
-  const isDraft = contract.status === 'DRAFT' || contract.status === 'PENDING_MANGAKA';
-  const isReadyToSign = contract.status === 'MANGAKA_SIGNED' || contract.status === 'WAITING_FOR_SIGNATURES'; // Exact statuses may vary based on backend
+  const isUnderMangakaReview = contract.status === 'MANGAKA_REVIEW';
+  const canSign = contract.status === 'BOARD_APPROVED';
+  const isExecuted = ['FULLY_EXECUTED', 'FULFILLED', 'TERMINATED', 'TERMINATED_BY_BREACH', 'EXPIRED'].includes(contract.status);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
@@ -129,15 +163,15 @@ export default function ContractDetailMangaka() {
           <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
             <View style={styles.termRow}>
               <Typography variant="body" color={currentColors.textSecondary}>Tỷ lệ chia sẻ (Revenue Share)</Typography>
-              <Typography variant="bodyBold">{contract.revenueShareRatio ? `${contract.revenueShareRatio}%` : 'N/A'}</Typography>
+              <Typography variant="bodyBold">{contract.mangakaOwnershipPct != null ? `${contract.mangakaOwnershipPct}%` : 'N/A'}</Typography>
             </View>
             <View style={styles.termRow}>
               <Typography variant="body" color={currentColors.textSecondary}>Định giá (Valuation)</Typography>
-              <Typography variant="bodyBold">{contract.valuation ? `${contract.valuation.toLocaleString()} VND` : 'N/A'}</Typography>
+              <Typography variant="bodyBold">{contract.valuationAmount != null ? `${contract.valuationAmount.toLocaleString()} VND` : 'N/A'}</Typography>
             </View>
             <View style={styles.termRow}>
               <Typography variant="body" color={currentColors.textSecondary}>Ngày hiệu lực</Typography>
-              <Typography variant="bodyBold">{contract.effectiveDate ? new Date(contract.effectiveDate).toLocaleDateString() : 'Chưa định'}</Typography>
+              <Typography variant="bodyBold">{contract.contractStart ? new Date(contract.contractStart).toLocaleDateString() : 'Chưa định'}</Typography>
             </View>
           </View>
         </View>
@@ -166,13 +200,13 @@ export default function ContractDetailMangaka() {
 
       {/* Floating Action Bar */}
       <View style={[styles.actionBar, { backgroundColor: currentColors.surface, borderTopColor: currentColors.border }]}>
-        {isDraft && (
+        {isUnderMangakaReview && (
           <>
-            <Button title="Yêu cầu sửa" variant="outline" style={{ flex: 1, marginRight: 8 }} onPress={() => Alert.alert('Tính năng đang phát triển')} />
+            <Button title="Yêu cầu sửa" variant="outline" style={{ flex: 1, marginRight: 8 }} onPress={() => setShowChangeModal(true)} />
             <Button title="Đồng ý" style={{ flex: 1, marginLeft: 8 }} onPress={handleApprove} />
           </>
         )}
-        {!isDraft && contract.status !== 'FULLY_EXECUTED' && (
+        {canSign && (
           <Button 
             title="Ký Hợp đồng (OTP)" 
             icon={<PenTool color="#fff" size={18} style={{ marginRight: 8 }} />}
@@ -180,8 +214,8 @@ export default function ContractDetailMangaka() {
             onPress={() => setShowOtpModal(true)} 
           />
         )}
-        {contract.status === 'FULLY_EXECUTED' && (
-          <Button title="Đã ký (Hoàn tất)" variant="outline" disabled style={{ flex: 1 }} />
+        {isExecuted && (
+          <Button title="Tải hợp đồng PDF" variant="outline" style={{ flex: 1 }} onPress={handleDownloadPdf} />
         )}
       </View>
 
@@ -208,6 +242,33 @@ export default function ContractDetailMangaka() {
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
               <Button title="Hủy" variant="outline" style={{ flex: 1 }} onPress={() => setShowOtpModal(false)} />
               <Button title="Xác nhận Ký" style={{ flex: 1 }} onPress={handleSign} loading={loading} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showChangeModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: currentColors.background }]}>
+            <Typography variant="h2" style={{ marginBottom: 8, textAlign: 'center' }}>Yêu cầu chỉnh sửa</Typography>
+            <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16, textAlign: 'center' }}>
+              Lý do là bắt buộc và sẽ được gửi trực tiếp cho Editor.
+            </Typography>
+            <TextInput
+              style={[styles.reasonInput, { color: currentColors.text, borderColor: currentColors.border }]}
+              value={changeReason}
+              onChangeText={setChangeReason}
+              maxLength={1000}
+              multiline
+              placeholder="Nêu điều khoản bạn muốn chỉnh sửa"
+              placeholderTextColor={currentColors.textSecondary}
+            />
+            <Typography variant="caption" color={currentColors.textSecondary} style={{ textAlign: 'right', marginTop: 4 }}>
+              {changeReason.length}/1000
+            </Typography>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+              <Button title="Huỷ" variant="outline" style={{ flex: 1 }} onPress={() => setShowChangeModal(false)} />
+              <Button title="Gửi yêu cầu" style={{ flex: 1 }} onPress={handleRequestChanges} loading={loading} disabled={!changeReason.trim()} />
             </View>
           </View>
         </View>
@@ -295,5 +356,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     paddingVertical: 12,
     marginHorizontal: 32,
-  }
+  },
+  reasonInput: {
+    minHeight: 112,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    textAlignVertical: 'top',
+  },
 });

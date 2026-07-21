@@ -7,6 +7,7 @@ import { Button } from '../../../../components/Button';
 import { colors } from '../../../../theme/colors';
 import { Image } from 'expo-image';
 import { ChevronLeft } from 'lucide-react-native';
+import { mangakaApi } from '../../../../api/mangaka';
 
 const { width } = Dimensions.get('window');
 
@@ -71,13 +72,13 @@ export default function CompositeReview() {
         { text: 'Hủy', style: 'cancel' },
         { 
           text: 'Gửi yêu cầu', 
-          onPress: async (reason) => {
+          onPress: async (reason?: string) => {
             if (!reason) {
               Alert.alert('Lỗi', 'Vui lòng nhập lý do.');
               return;
             }
             try {
-              await mangakaApi.rejectTask(taskId as string, reason);
+              await mangakaApi.requestTaskRevision(taskId as string, reason);
               Alert.alert('Thành công', 'Đã gửi yêu cầu sửa lại cho Assistant.');
               router.back();
             } catch (e: any) {

@@ -34,7 +34,7 @@ export default function LoginScreen() {
       const res = await authApi.login({ email, password });
       if (res.success && res.data) {
         const userRole = res.data.user.role;
-        setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
+        await setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
         if (userRole === 'ASSISTANT') {
           router.replace('/(assistant-tabs)');
         } else if (userRole === 'MANGAKA') {
@@ -81,7 +81,7 @@ export default function LoginScreen() {
       const res = await authApi.loginWithGoogle({ idToken: token });
       if (res.success && res.data) {
         const userRole = res.data.user.role;
-        setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
+        await setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
         if (userRole === 'ASSISTANT') {
           router.replace('/(assistant-tabs)');
         } else if (userRole === 'MANGAKA') {

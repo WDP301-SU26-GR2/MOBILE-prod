@@ -18,7 +18,7 @@ export default function ForgotPasswordScreen() {
   const handleSendOtp = async () => {
     try {
       setLoading(true);
-      await authApi.sendOtpEmail({ email });
+      await authApi.sendOtpEmail({ email, purpose: 'FORGOT_PASSWORD' });
       Alert.alert('Thành công', 'Mã OTP đã được gửi đến email của bạn.');
       // Chuyển sang màn Reset Password (S-AUTH-06)
       // router.push({ pathname: '/(auth)/reset-password', params: { email } });

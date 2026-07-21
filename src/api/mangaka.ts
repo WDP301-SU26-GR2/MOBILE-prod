@@ -106,7 +106,7 @@ export const mangakaApi = {
     return res.data;
   },
   approveContract: async (id: string) => {
-    const res = await apiClient.patch(`/contracts/${id}/status`, { status: 'MANGAKA_SIGNED' }); // Flow details depends on implementation
+    const res = await apiClient.patch(`/contracts/${id}/status`, { status: 'MANGAKA_APPROVED' });
     return res.data;
   },
   getContractVersions: async (id: string) => {
@@ -151,10 +151,6 @@ export const mangakaApi = {
     const res = await apiClient.post(`/tasks/${taskId}/request-revision`, { reason });
     return res.data;
   },
-  rejectTask: async (taskId: string, reason: string) => {
-    const res = await apiClient.post(`/tasks/${taskId}/reject`, { reason });
-    return res.data;
-  },
   // Chapter Pages
   getChapterPages: async (chapterId: string) => {
     const res = await apiClient.get(`/chapters/${chapterId}/pages`);
@@ -164,8 +160,12 @@ export const mangakaApi = {
     const res = await apiClient.post(`/chapters/${chapterId}/pages`, payload);
     return res.data?.data;
   },
-  updatePage: async (pageId: string, payload: { compositeFile?: string }) => {
+  updatePage: async (pageId: string, payload: { compositeFile?: string | null; pageNumber?: number | null }) => {
     const res = await apiClient.patch(`/pages/${pageId}`, payload);
+    return res.data?.data;
+  },
+  deletePage: async (pageId: string) => {
+    const res = await apiClient.delete(`/pages/${pageId}`);
     return res.data?.data;
   },
   // Manuscript submit
@@ -262,7 +262,7 @@ export const mangakaApi = {
   },
   // Franchise Consent
   franchiseConsent: async (seriesId: string, approve: boolean) => {
-    const res = await apiClient.post(`/series/${seriesId}/franchise-consent`, { approve });
+    const res = await apiClient.post(`/series/${seriesId}/franchise-consent`, { action: approve ? 'approve' : 'reject' });
     return res.data;
   },
   // Uploads

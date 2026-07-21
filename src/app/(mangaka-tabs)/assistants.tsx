@@ -48,7 +48,10 @@ export default function AssistantsScreen() {
       setSending(true);
       await directoryApi.sendCollaborationInvite({
         assistantId: selectedAssistant.userId,
-        ...inviteForm,
+        seriesId: inviteForm.seriesId || undefined,
+        hireStart: inviteForm.hireStart,
+        hireEnd: inviteForm.hireEnd,
+        taskTypes: [inviteForm.role],
       });
       alert('Gửi lời mời thành công!');
       setShowInviteModal(false);
@@ -102,7 +105,7 @@ export default function AssistantsScreen() {
       )}
 
       {showInviteModal && selectedAssistant && (
-        <View style={StyleSheet.absoluteFillObject}>
+        <View style={StyleSheet.absoluteFill}>
           <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
           <View style={styles.modalCenter}>
             <View style={[styles.modalContent, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
@@ -167,7 +170,7 @@ const styles = StyleSheet.create({
   list: { padding: 16 },
   modalOverlay: { flex: 1 },
   modalCenter: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     padding: 24,
   },

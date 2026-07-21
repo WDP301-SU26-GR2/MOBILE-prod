@@ -32,7 +32,7 @@ export default function TaskListScreen() {
       else setLoading(true);
       
       const res = await mangakaApi.getTasks({ limit: 50, offset: 0 });
-      if (res && res.data) setTasks(res.data);
+      setTasks(res?.items || []);
     } catch (e) {
       console.error(e);
     } finally {

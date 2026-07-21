@@ -9,6 +9,8 @@ import { mangakaApi } from '../../../api/mangaka';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { colors } from '../../../theme/colors';
 import { ArrowLeft } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadFileToR2 } from '../../../utils/upload';
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -20,6 +22,8 @@ export default function TaskDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
   const [versionUrls, setVersionUrls] = useState<Record<string, string>>({});
+  const [imageFrame, setImageFrame] = useState({ width: 0, height: 0 });
+  const [sourceSize, setSourceSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     fetchData();
@@ -33,8 +37,8 @@ export default function TaskDetailScreen() {
         const t = res;
         setTask(t);
         
-        if (t.page?.originalFile) {
-          const url = await mangakaApi.getTaskDownloadUrl(id as string, t.page.originalFile);
+        if (t.pageOriginalFile) {
+          const url = await mangakaApi.getTaskDownloadUrl(id as string, t.pageOriginalFile);
           setOriginalUrl(url);
         }
 
@@ -64,6 +68,54 @@ export default function TaskDetailScreen() {
       console.error(e);
       Alert.alert('Lỗi', 'Không thể bắt đầu công việc');
     }
+  };
+
+  const handleSubmitResult = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Cần quyền truy cập ảnh', 'Hãy cho phép ứng dụng truy cập thư viện ảnh để nộp kết quả.');
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+    if (pickerResult.canceled || !pickerResult.assets[0]) return;
+
+    const asset = pickerResult.assets[0];
+    const contentType = asset.mimeType || 'image/jpeg';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+      Alert.alert('Định dạng chưa hỗ trợ', 'Chỉ có thể nộp ảnh JPEG, PNG hoặc WebP.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const fileName = asset.fileName || `task-${id}.${contentType.split('/')[1]}`;
+      const resultFile = await uploadFileToR2(asset.uri, fileName, contentType);
+      await mangakaApi.submitTask(id as string, resultFile);
+      Alert.alert('Đã nộp kết quả', 'Mangaka sẽ nhận được bài nộp để duyệt.');
+      await fetchData();
+    } catch (error: any) {
+      Alert.alert('Không thể nộp kết quả', error.response?.data?.message || error.message || 'Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRegionFrame = (coordinates: { x: number; y: number; width: number; height: number }) => {
+    if (!imageFrame.width || !imageFrame.height || !sourceSize.width || !sourceSize.height) return null;
+
+    const scale = Math.min(imageFrame.width / sourceSize.width, imageFrame.height / sourceSize.height);
+    const renderedWidth = sourceSize.width * scale;
+    const renderedHeight = sourceSize.height * scale;
+    const offsetX = (imageFrame.width - renderedWidth) / 2;
+    const offsetY = (imageFrame.height - renderedHeight) / 2;
+
+    return {
+      left: offsetX + coordinates.x * scale,
+      top: offsetY + coordinates.y * scale,
+      width: coordinates.width * scale,
+      height: coordinates.height * scale,
+    };
   };
 
   if (loading || !task) {
@@ -112,16 +164,17 @@ export default function TaskDetailScreen() {
         {originalUrl && (
           <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
             <Typography variant="h3" style={{ marginBottom: 12 }}>File gốc - Trang {task.page?.pageNumber}</Typography>
-            <View style={{ position: 'relative' }}>
-              <Image source={{ uri: originalUrl }} style={styles.imagePreview} contentFit="contain" />
-              {task.region && (
-                <View style={[styles.regionOverlay, { 
-                  left: `${task.region.x * 100}%`, 
-                  top: `${task.region.y * 100}%`, 
-                  width: `${task.region.width * 100}%`, 
-                  height: `${task.region.height * 100}%` 
-                }]} />
-              )}
+            <View style={styles.imageFrame} onLayout={(event) => setImageFrame(event.nativeEvent.layout)}>
+              <Image
+                source={{ uri: originalUrl }}
+                style={styles.imagePreview}
+                contentFit="contain"
+                onLoad={(event: any) => setSourceSize({ width: event.source.width, height: event.source.height })}
+              />
+              {(task.regions || []).map((region: any) => {
+                const frame = region.coordinates ? getRegionFrame(region.coordinates) : null;
+                return frame ? <View key={region.id} style={[styles.regionOverlay, frame]} /> : null;
+              })}
             </View>
             <Button 
               title="Tải về" 
@@ -138,14 +191,14 @@ export default function TaskDetailScreen() {
             <Button title="Bắt đầu làm" onPress={handleStartTask} />
           )}
           {task.status === 'IN_PROGRESS' && (
-            <Button title="Upload kết quả & Nộp" onPress={() => Alert.alert('Tính năng upload sẽ sớm ra mắt')} />
+            <Button title="Upload kết quả & Nộp" onPress={handleSubmitResult} loading={loading} />
           )}
           {task.status === 'REVISION_REQUESTED' && (
             <View>
               <View style={[styles.banner, { backgroundColor: currentColors.error }]}>
                 <Typography variant="bodyBold" style={{ color: '#FFF' }}>Cần sửa lại</Typography>
               </View>
-              <Button title="Upload bản sửa" onPress={() => Alert.alert('Tính năng upload sẽ sớm ra mắt')} style={{ marginTop: 12 }} />
+              <Button title="Upload bản sửa" onPress={handleSubmitResult} loading={loading} style={{ marginTop: 12 }} />
             </View>
           )}
           {task.status === 'SUBMITTED' && (
@@ -192,7 +245,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
   content: { padding: 16, paddingBottom: 40 },
   card: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
-  imagePreview: { width: '100%', height: 300, backgroundColor: '#eee', borderRadius: 8 },
+  imageFrame: { width: '100%', height: 300, position: 'relative' },
+  imagePreview: { width: '100%', height: '100%', backgroundColor: '#eee', borderRadius: 8 },
   thumbnail: { width: 100, height: 100, borderRadius: 8, marginTop: 8 },
   actionSection: { marginBottom: 16 },
   banner: { padding: 16, borderRadius: 8, alignItems: 'center' },

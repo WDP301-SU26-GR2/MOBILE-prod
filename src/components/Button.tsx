@@ -1,14 +1,16 @@
 import React from 'react';
-import { TouchableOpacity, ActivityIndicator, StyleSheet, TouchableOpacityProps, View } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, StyleSheet, TouchableOpacityProps, View, TextStyle } from 'react-native';
 import { useThemeStore } from '../store/useThemeStore';
 import { colors } from '../theme/colors';
 import { Typography } from './Typography';
 
 interface ButtonProps extends TouchableOpacityProps {
-  variant?: 'primary' | 'secondary' | 'inverted' | 'outlined';
+  /** `outline` is kept as a backwards-compatible alias used by older screens. */
+  variant?: 'primary' | 'secondary' | 'inverted' | 'outlined' | 'outline';
   title: string;
   loading?: boolean;
   icon?: React.ReactNode;
+  textStyle?: TextStyle;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,16 +18,18 @@ export const Button: React.FC<ButtonProps> = ({
   title,
   loading = false,
   icon,
+  textStyle,
   style,
   disabled,
   ...rest
 }) => {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
+  const resolvedVariant = variant === 'outline' ? 'outlined' : variant;
 
   const getBackgroundColor = () => {
     if (disabled) return currentColors.border;
-    switch (variant) {
+    switch (resolvedVariant) {
       case 'primary': return currentColors.primary;
       case 'secondary': return currentColors.secondary;
       case 'inverted': return currentColors.text;
@@ -36,7 +40,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getTextColor = () => {
     if (disabled) return currentColors.textSecondary;
-    switch (variant) {
+    switch (resolvedVariant) {
       case 'primary': return '#FFFFFF';
       case 'secondary': return '#FFFFFF';
       case 'inverted': return currentColors.background;
@@ -46,7 +50,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getBorderColor = () => {
-    if (variant === 'outlined') return currentColors.border;
+    if (resolvedVariant === 'outlined') return currentColors.border;
     return 'transparent';
   };
 
@@ -59,7 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
         {
           backgroundColor: getBackgroundColor(),
           borderColor: getBorderColor(),
-          borderWidth: variant === 'outlined' ? 1 : 0,
+          borderWidth: resolvedVariant === 'outlined' ? 1 : 0,
         },
         style,
       ]}
@@ -70,7 +74,7 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <View style={styles.content}>
           {icon && <View style={styles.iconContainer}>{icon}</View>}
-          <Typography variant="bodyMedium" font="bodyMedium" style={{ color: getTextColor() }}>
+          <Typography variant="bodyMedium" font="bodyMedium" style={[{ color: getTextColor() }, textStyle]}>
             {title}
           </Typography>
         </View>

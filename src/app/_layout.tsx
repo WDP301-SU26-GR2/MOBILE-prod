@@ -46,7 +46,7 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inPublicGroup = segments[0] === '(public)';
-    const isRoot = !segments[0] || segments[0] === '';
+    const isRoot = !segments[0];
     
     if (!accessToken) {
       // Not logged in: must be in public or auth. If at root, go to public. If trying to access protected, go to login.

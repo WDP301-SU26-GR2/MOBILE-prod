@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../../components/Typography';
@@ -16,7 +16,13 @@ export default function CreateProposal() {
   const currentColors = colors[theme];
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    synopsis: string;
+    genres: string[];
+    demographic: string;
+    estimatedLength: string;
+  }>({
     title: '',
     synopsis: '',
     genres: [],

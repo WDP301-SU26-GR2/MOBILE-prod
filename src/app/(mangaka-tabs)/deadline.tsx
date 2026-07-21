@@ -177,7 +177,7 @@ export default function DeadlineNegotiationScreen() {
           <View style={{ alignItems: 'center', marginTop: 60 }}>
             <Calendar color={currentColors.border} size={48} />
             <Typography color={currentColors.textSecondary} style={{ marginTop: 16, textAlign: 'center' }}>
-              Chưa có yêu cầu thương lượng nào.{'\n'}Nhấn '+ Mới' để tạo yêu cầu.
+              Chưa có yêu cầu thương lượng nào.{'\n'}Nhấn {"'+ Mới'"} để tạo yêu cầu.
             </Typography>
           </View>
         )}

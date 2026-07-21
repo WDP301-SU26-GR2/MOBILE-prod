@@ -8,6 +8,8 @@ import { Typography } from '../../../../components/Typography';
 import { useThemeStore } from '../../../../store/useThemeStore';
 import { colors } from '../../../../theme/colors';
 import { mangakaApi } from '../../../../api/mangaka';
+import { uploadFileToR2 } from '../../../../utils/upload';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Page {
   id: string;
@@ -114,7 +116,7 @@ export default function ChapterPagesScreen() {
       if (!chapterId) return;
       const res = await mangakaApi.getChapterPages(chapterId);
       if (res && res.items) {
-        setPages(res.items.sort((a: Page, b: Page) => a.pageNumber - b.pageNumber));
+        setPages([...res.items].sort((a: Page, b: Page) => a.pageNumber - b.pageNumber));
       }
     } catch (error) {
       console.error('Error fetching chapter pages:', error);
@@ -134,8 +136,48 @@ export default function ChapterPagesScreen() {
     fetchPages();
   };
 
-  const handleAddPage = () => {
-    Alert.alert('Thông báo', 'Tính năng upload trang sẽ sớm ra mắt');
+  const handleAddPage = async () => {
+    if (!chapterId) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Cần quyền truy cập ảnh', 'Hãy cho phép ứng dụng truy cập thư viện ảnh để thêm trang truyện.');
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: 50,
+      orderedSelection: true,
+      quality: 1,
+    });
+
+    if (pickerResult.canceled || !pickerResult.assets.length) return;
+
+    const supportedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (pickerResult.assets.some((asset) => asset.mimeType && !supportedTypes.has(asset.mimeType))) {
+      Alert.alert('Định dạng chưa hỗ trợ', 'Chỉ có thể tải lên ảnh JPEG, PNG hoặc WebP.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let pageNumber = pages.reduce((max, page) => Math.max(max, page.pageNumber), 0) + 1;
+      for (const asset of pickerResult.assets) {
+        const contentType = asset.mimeType || 'image/jpeg';
+        const fileName = asset.fileName || `page-${pageNumber}.${contentType.split('/')[1]}`;
+        const originalFile = await uploadFileToR2(asset.uri, fileName, contentType);
+        await mangakaApi.createPage(chapterId, { pageNumber, originalFile });
+        pageNumber += 1;
+      }
+      await fetchPages();
+      Alert.alert('Thành công', `Đã thêm ${pickerResult.assets.length} trang.`);
+    } catch (error: any) {
+      Alert.alert('Không thể thêm trang', error.response?.data?.message || error.message || 'Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const draftCount = pages.filter(p => p.status === 'DRAFT').length;
@@ -196,18 +238,6 @@ export default function ChapterPagesScreen() {
     Alert.alert('Tuỳ chọn trang ' + page.pageNumber, 'Bạn muốn làm gì?', [
       { text: 'Huỷ', style: 'cancel' },
       { 
-        text: 'Cập nhật (Demo)', 
-        onPress: async () => {
-          try {
-            await mangakaApi.updatePage(page.id, { compositeFile: 'demo_updated_composite_file' });
-            Alert.alert('Thành công', 'Đã cập nhật compositeFile.');
-            fetchPages();
-          } catch (e: any) {
-            Alert.alert('Lỗi', e.response?.data?.message || 'Không thể cập nhật trang.');
-          }
-        } 
-      },
-      { 
         text: 'Xoá trang', 
         style: 'destructive',
         onPress: () => {
@@ -218,10 +248,10 @@ export default function ChapterPagesScreen() {
               style: 'destructive',
               onPress: async () => {
                 try {
-                  // Giả lập API xoá trang, backend có endpoint xoá page không?
-                  // Giả định backend có apiClient.delete(`/pages/${page.id}`) -> chưa có trong mangakaApi.
-                  Alert.alert('Thông báo', 'Tính năng xoá trang sẽ sớm ra mắt.');
-                  fetchPages();
+                  const deleted = await mangakaApi.deletePage(page.id);
+                  await fetchPages();
+                  const taskCount = deleted?.deletedTasks ?? 0;
+                  Alert.alert('Đã xoá trang', taskCount ? `Đã xoá kèm ${taskCount} task chưa duyệt.` : 'Danh sách trang đã được đánh số lại tự động.');
                 } catch (e: any) {
                   Alert.alert('Lỗi', 'Không thể xoá trang');
                 }

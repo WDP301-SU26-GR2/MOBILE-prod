@@ -16,8 +16,10 @@ export const apiClient = axios.create({
 // Request interceptor để tự động chèn accessToken vào header
 apiClient.interceptors.request.use(
   (config) => {
+    const requestUrl = config.url || '';
+    const isPublicRequest = requestUrl.startsWith('/auth/') || requestUrl.startsWith('/public/') || requestUrl.startsWith('/vote/');
     const accessToken = useAuthStore.getState().accessToken;
-    if (accessToken && config.headers) {
+    if (!isPublicRequest && accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
@@ -44,8 +46,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || '';
+    const isAuthRequest = requestUrl.startsWith('/auth/');
     
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Login/register/OTP endpoints are public. A 401 there means invalid input
+    // or credentials, not an expired app session, so let the screen handle it.
+    if (error.response?.status === 401 && !isAuthRequest && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -101,8 +107,12 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    // Log network errors (using console.warn to avoid React Native Red Box)
-    console.warn('[Network Error]:', error?.response?.status, backendCode || error?.message, backendMessage);
+    // Expected 4xx responses are rendered by their owning screen. Only log
+    // transport/server failures so Expo does not display a warning overlay for
+    // a normal invalid-login response.
+    if (!error.response || error.response.status >= 500) {
+      console.warn('[Network Error]:', error?.response?.status, backendCode || error?.message, backendMessage);
+    }
     
     return Promise.reject(error);
   }

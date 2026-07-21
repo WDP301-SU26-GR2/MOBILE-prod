@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, RefreshControl, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, RefreshControl, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
@@ -48,10 +48,10 @@ export default function ReviewInbox() {
     let onPress = () => {};
 
     if (type === 'task') {
-      title = `Công việc: ${item.type}`;
+      title = `Công việc: ${item.taskType}`;
       description = `Chapter ${item.chapter?.chapterNumber || '?'}`;
       icon = <CheckCircle color={currentColors.success} size={24} />;
-      onPress = () => router.push(`/(mangaka-tabs)/studio`);
+      onPress = () => router.push({ pathname: '/(mangaka-tabs)/series_stack/review/[taskId]', params: { taskId: item.id } });
     } else if (type === 'revision') {
       title = `Yêu cầu sửa: ${item.targetType}`;
       description = `Vòng ${item.round}: ${item.reason}`;
@@ -61,7 +61,11 @@ export default function ReviewInbox() {
       title = `Đồng ý bản quyền: ${item.title}`;
       description = `Cần xác nhận nhượng quyền cho phần tiếp theo`;
       icon = <HelpCircle color={currentColors.primary} size={24} />;
-      onPress = () => router.push(`/(mangaka-tabs)/series_stack/${item.id}`);
+      onPress = () => Alert.alert('Xác nhận bản quyền', `Bạn có đồng ý cho phép series phái sinh “${item.title}” tiếp tục nộp không?`, [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Từ chối', style: 'destructive', onPress: () => mangakaApi.franchiseConsent(item.id, false).then(fetchInbox) },
+        { text: 'Đồng ý', onPress: () => mangakaApi.franchiseConsent(item.id, true).then(fetchInbox) },
+      ]);
     }
 
     return (

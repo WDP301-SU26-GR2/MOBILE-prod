@@ -20,7 +20,7 @@ export default function StudioScreen() {
   const fetchInvites = async () => {
     try {
       const res = await mangakaApi.getCollaborationInvites();
-      if (res?.data) setInvites(res.data);
+      setInvites(res?.items || []);
     } catch (e) {
       console.error(e);
     }
@@ -29,7 +29,7 @@ export default function StudioScreen() {
   const fetchCollabs = async () => {
     try {
       const res = await mangakaApi.getStudioAssignments();
-      if (res?.data) setCollabs(res.data);
+      setCollabs(res?.items || []);
     } catch (e) {
       console.error(e);
     }
