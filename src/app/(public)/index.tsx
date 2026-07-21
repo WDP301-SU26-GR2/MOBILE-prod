@@ -7,7 +7,7 @@ import { publicApi, SeriesPublic } from '../../api/public';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
-import { Trophy } from 'lucide-react-native';
+import { Trophy, ChevronRight } from 'lucide-react-native';
 
 export default function PublicHome() {
   const router = useRouter();
@@ -81,14 +81,17 @@ export default function PublicHome() {
       {/* Vote Banner */}
       {voteContext?.period && (
         <TouchableOpacity 
-          style={[styles.voteBanner, { backgroundColor: currentColors.primary }]}
+          style={[styles.voteBanner, { backgroundColor: currentColors.surface, borderColor: currentColors.border, borderWidth: 1 }]}
           onPress={() => router.push('/(public)/vote')}
         >
-          <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold" color="#FFF">🗳️ Kỳ bình chọn #{voteContext.period.number} đang mở!</Typography>
-            <Typography variant="caption" color="rgba(255,255,255,0.8)">Nhấn để bình chọn series yêu thích của bạn</Typography>
+          <View style={{ padding: 8, backgroundColor: 'rgba(52, 152, 219, 0.1)', borderRadius: 8 }}>
+            <Trophy color={currentColors.primary} size={24} />
           </View>
-          <Typography variant="bodyBold" color="#FFF">›</Typography>
+          <View style={{ flex: 1 }}>
+            <Typography variant="bodyBold" color={currentColors.text}>Kỳ bình chọn #{voteContext.period.number} đang mở!</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Nhấn để bình chọn series yêu thích của bạn</Typography>
+          </View>
+          <ChevronRight color={currentColors.textSecondary} size={20} />
         </TouchableOpacity>
       )}
 

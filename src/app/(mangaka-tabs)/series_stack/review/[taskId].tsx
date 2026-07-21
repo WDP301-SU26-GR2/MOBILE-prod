@@ -15,6 +15,8 @@ export default function CompositeReview() {
   const router = useRouter();
   const [task, setTask] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
   
   React.useEffect(() => {
     fetchTask();
@@ -24,6 +26,17 @@ export default function CompositeReview() {
     try {
       const data = await mangakaApi.getReviewTask(taskId as string);
       setTask(data);
+      if (data) {
+        if (data.pageOriginalFile) {
+           const origUrl = await mangakaApi.getTaskDownloadUrl(taskId as string, data.pageOriginalFile);
+           setOriginalUrl(origUrl);
+        }
+        const latestVersion = data.versions && data.versions.length > 0 ? data.versions[data.versions.length - 1] : null;
+        if (latestVersion?.file) {
+           const resUrl = await mangakaApi.getTaskDownloadUrl(taskId as string, latestVersion.file);
+           setResultUrl(resUrl);
+        }
+      }
     } catch (error) {
       console.log('Error fetching review task', error);
       Alert.alert('Lỗi', 'Không thể tải chi tiết bài nộp.');
@@ -102,7 +115,7 @@ export default function CompositeReview() {
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Typography variant="h2">Duyệt bài Tổng hợp</Typography>
           <Typography variant="body" color={colors.textSecondary}>
-            Nhiệm vụ: {task.title || 'Không rõ'}
+            Nhiệm vụ: {task.taskType || 'Không rõ'}
           </Typography>
         </View>
       </View>
@@ -114,15 +127,22 @@ export default function CompositeReview() {
             style={{ width: 32, height: 32, borderRadius: 16 }} 
           />
           <Typography variant="body" color={colors.textSecondary}>
-            Trợ lý: {task.assistant?.displayName || task.assistantName || 'Không rõ'}
+            Trợ lý: {task.assistant?.displayName || 'Không rõ'}
           </Typography>
         </View>
       </View>
 
       <View style={styles.content}>
-        <Typography variant="h3" style={{ marginBottom: 12 }}>Bài nộp</Typography>
+        <Typography variant="h3" style={{ marginBottom: 12 }}>Bài nộp (Kết quả)</Typography>
         <Image 
-          source={{ uri: task.imageUrl }} 
+          source={{ uri: resultUrl || 'https://via.placeholder.com/400x533' }} 
+          style={styles.imagePreview} 
+          contentFit="contain"
+        />
+
+        <Typography variant="h3" style={{ marginBottom: 12, marginTop: 16 }}>Bản gốc (Nền)</Typography>
+        <Image 
+          source={{ uri: originalUrl || 'https://via.placeholder.com/400x533' }} 
           style={styles.imagePreview} 
           contentFit="contain"
         />
@@ -130,7 +150,7 @@ export default function CompositeReview() {
         <View style={styles.actions}>
           <Button 
             title="Yêu cầu sửa" 
-            variant="outlined" 
+            variant="outline" 
             onPress={handleRevision} 
             style={styles.btn}
           />

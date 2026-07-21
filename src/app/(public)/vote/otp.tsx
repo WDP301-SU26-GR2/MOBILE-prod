@@ -9,6 +9,7 @@ import { Button } from '../../../components/Button';
 import { TextInput } from '../../../components/TextInput';
 import { publicApi } from '../../../api/public';
 import { colors } from '../../../theme/colors';
+import { RecaptchaV3 } from '../../../components/RecaptchaV3';
 
 export default function VoteOtpScreen() {
   const { periodId, selectedSeriesIds } = useLocalSearchParams();
@@ -23,6 +24,12 @@ export default function VoteOtpScreen() {
   const [cooldown, setCooldown] = useState(0);
   const [step, setStep] = useState<'email' | 'otp'>('email');
 
+  const recaptchaRef = React.useRef<any>(null);
+  const [pendingAction, setPendingAction] = useState<'otp' | 'vote' | null>(null);
+
+  const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY || '';
+  const captchaUrl = 'https://captcha.novaproj.site'; // Make sure this is whitelisted in reCAPTCHA Admin
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (cooldown > 0) {
@@ -31,36 +38,46 @@ export default function VoteOtpScreen() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  const handleSendCode = async () => {
+  const initiateSendCode = () => {
     if (!email || !email.includes('@')) {
       Alert.alert('Lỗi', 'Vui lòng nhập email hợp lệ');
       return;
     }
-    
     setIsSending(true);
+    setPendingAction('otp');
+    recaptchaRef.current?.execute('otp');
+  };
+
+  const handleSendCode = async (token: string) => {
     try {
-      await publicApi.sendVoteOtp(email, ''); // Empty captchaToken as requested
+      await publicApi.sendVoteOtp(email, token);
       setStep('otp');
       setCooldown(60);
     } catch (error: any) {
-      const status = error.response?.status;
-      if (status === 429) {
-        Alert.alert('Chờ một chút', 'Bạn đã gửi mã quá nhiều lần, vui lòng thử lại sau.');
+      const errRes = error.response?.data;
+      if (errRes?.code === 'Error.VoteOtpRateLimit' || error.response?.status === 429) {
+        setCooldown(errRes?.retryAfter || 60);
+        Alert.alert('Chờ một chút', errRes?.message || 'Bạn đã gửi mã quá nhiều lần, vui lòng thử lại sau.');
       } else {
-        Alert.alert('Lỗi', 'Không thể gửi mã xác nhận. Vui lòng thử lại.');
+        Alert.alert('Lỗi', errRes?.message || 'Không thể gửi mã xác nhận. Vui lòng thử lại.');
       }
     } finally {
       setIsSending(false);
+      setPendingAction(null);
     }
   };
 
-  const handleSubmitVote = async () => {
+  const initiateSubmitVote = () => {
     if (otp.length < 6) {
       Alert.alert('Lỗi', 'Mã xác nhận không hợp lệ');
       return;
     }
-    
     setIsSubmitting(true);
+    setPendingAction('vote');
+    recaptchaRef.current?.execute('vote');
+  };
+
+  const handleSubmitVote = async (token: string) => {
     try {
       let seriesIds = [];
       try {
@@ -74,22 +91,31 @@ export default function VoteOtpScreen() {
         identity: email,
         otpCode: otp,
         seriesIds,
-        captchaToken: ''
+        captchaToken: token
       });
       
       await AsyncStorage.setItem(`voted_${periodId}`, 'true');
       router.replace('/(public)/vote/done');
     } catch (error: any) {
-      const status = error.response?.status;
-      if (status === 409) {
-        Alert.alert('Thất bại', 'Bạn đã bình chọn trong kỳ này rồi.');
-      } else if (status === 400) {
-        Alert.alert('Thất bại', 'Mã xác nhận sai hoặc kỳ bình chọn đã đóng.');
+      const errRes = error.response?.data;
+      if (errRes?.code === 'Error.ReaderAlreadyVoted' || error.response?.status === 409) {
+        Alert.alert('Thất bại', errRes?.message || 'Bạn đã bình chọn trong kỳ này rồi.');
+      } else if (errRes?.code === 'Error.SurveyPeriodNotOpen' || errRes?.code === 'Error.OtpInvalid' || error.response?.status === 400) {
+        Alert.alert('Thất bại', errRes?.message || 'Mã xác nhận sai hoặc kỳ bình chọn đã đóng.');
       } else {
-        Alert.alert('Lỗi', 'Không thể gửi phiếu bầu. Vui lòng thử lại sau.');
+        Alert.alert('Lỗi', errRes?.message || 'Không thể gửi phiếu bầu. Vui lòng thử lại sau.');
       }
     } finally {
       setIsSubmitting(false);
+      setPendingAction(null);
+    }
+  };
+
+  const handleRecaptchaToken = (token: string) => {
+    if (pendingAction === 'otp') {
+      handleSendCode(token);
+    } else if (pendingAction === 'vote') {
+      handleSubmitVote(token);
     }
   };
 
@@ -121,7 +147,7 @@ export default function VoteOtpScreen() {
             {step === 'email' ? (
               <Button
                 title="Gửi mã"
-                onPress={handleSendCode}
+                onPress={initiateSendCode}
                 loading={isSending}
                 style={styles.actionButton}
               />
@@ -129,7 +155,7 @@ export default function VoteOtpScreen() {
               <View style={styles.resendContainer}>
                 <Button
                   title={cooldown > 0 ? `Gửi lại mã (${cooldown}s)` : "Gửi lại mã"}
-                  onPress={handleSendCode}
+                  onPress={initiateSendCode}
                   variant="outline"
                   disabled={cooldown > 0 || isSending}
                   style={styles.resendButton}
@@ -150,7 +176,7 @@ export default function VoteOtpScreen() {
                 
                 <Button
                   title="Gửi phiếu bầu"
-                  onPress={handleSubmitVote}
+                  onPress={initiateSubmitVote}
                   loading={isSubmitting}
                   disabled={otp.length !== 6}
                   style={styles.actionButton}
@@ -160,6 +186,12 @@ export default function VoteOtpScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <RecaptchaV3 
+        ref={recaptchaRef} 
+        siteKey={siteKey} 
+        url={captchaUrl} 
+        onReceiveToken={handleRecaptchaToken} 
+      />
     </SafeAreaView>
   );
 }

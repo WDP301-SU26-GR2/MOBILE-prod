@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../../components/Typography';
 import { Button } from '../../../../components/Button';
@@ -47,6 +48,50 @@ export default function ContractDetail() {
     }
   };
 
+  const [requestReason, setRequestReason] = useState('');
+  const [isRequestingChange, setIsRequestingChange] = useState(false);
+  const [reasonError, setReasonError] = useState('');
+
+  const handleDownloadPdf = async () => {
+    try {
+      const res = await mangakaApi.getContractPdf(id as string);
+      if (res?.downloadUrl) {
+        Linking.openURL(res.downloadUrl);
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.response?.data?.message || 'Không thể tải PDF.');
+    }
+  };
+
+  const handleRequestChange = async () => {
+    if (!requestReason.trim()) {
+      setReasonError('Vui lòng nhập lý do chỉnh sửa.');
+      return;
+    }
+    if (requestReason.length > 1000) {
+      setReasonError('Lý do tối đa 1000 ký tự.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await mangakaApi.requestContractChanges(id as string, requestReason);
+      Alert.alert('Thành công', 'Đã gửi yêu cầu chỉnh sửa.');
+      setRequestReason('');
+      setIsRequestingChange(false);
+      fetchContract(); // reload
+    } catch (e: any) {
+      const errRes = e.response?.data;
+      if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
+        const err = errRes.errors.find((x: any) => x.path === 'reason');
+        if (err) setReasonError(err.message);
+      } else {
+        Alert.alert('Lỗi', errRes?.message || 'Không thể gửi yêu cầu.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (fetching) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -63,6 +108,8 @@ export default function ContractDetail() {
     );
   }
 
+  const isExecuted = ['FULLY_EXECUTED', 'FULFILLED', 'TERMINATED', 'TERMINATED_BY_BREACH', 'EXPIRED'].includes(contract.status);
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -72,6 +119,11 @@ export default function ContractDetail() {
         <View style={styles.header}>
           <Typography variant="h2">Hợp Đồng Xuất Bản</Typography>
           <Typography variant="body" color={colors.textSecondary}>Mã HĐ: {contract.id}</Typography>
+          {contract.boardDecision && (
+            <Typography variant="caption" color={colors.textSecondary} style={{ marginTop: 8 }}>
+              Duyệt serial hóa tại phiên {contract.boardDecision.boardSession?.title} · {new Date(contract.boardDecision.decidedAt).toLocaleString()}
+            </Typography>
+          )}
         </View>
 
         <View style={styles.content}>
@@ -85,27 +137,60 @@ export default function ContractDetail() {
             </Typography>
           </View>
 
-          <View style={styles.signatureBox}>
-            <Typography variant="h3" style={{ marginBottom: 12 }}>Ký điện tử bằng OTP</Typography>
-            <Typography variant="caption" color={colors.textSecondary} style={{ marginBottom: 16 }}>
-              Bằng việc nhập OTP, bạn đồng ý với các điều khoản của hợp đồng. OTP đã được gửi vào email của bạn.
-            </Typography>
-            <TextInput
-              label="Mã OTP"
-              placeholder="Nhập 6 số"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="number-pad"
-              maxLength={6}
-              style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
-            />
+          {isExecuted && (
             <Button 
-              title="Ký Hợp Đồng" 
-              onPress={handleSign} 
-              loading={loading}
-              style={{ marginTop: 16 }}
+              title="Tải hợp đồng PDF" 
+              variant="outline"
+              onPress={handleDownloadPdf}
+              style={{ marginBottom: 24 }}
             />
-          </View>
+          )}
+
+          {!isExecuted && (
+            <View style={styles.signatureBox}>
+              <Typography variant="h3" style={{ marginBottom: 12 }}>Yêu cầu chỉnh sửa</Typography>
+              <TextInput
+                label="Lý do"
+                placeholder="Nhập lý do chỉnh sửa (bắt buộc, max 1000 ký tự)"
+                value={requestReason}
+                error={reasonError}
+                onChangeText={(t) => {
+                  setRequestReason(t);
+                  if (reasonError) setReasonError('');
+                }}
+                multiline
+                numberOfLines={3}
+              />
+              <Button 
+                title="Gửi Yêu Cầu Chỉnh Sửa" 
+                variant="outline"
+                onPress={handleRequestChange} 
+                loading={loading}
+                disabled={!requestReason.trim()}
+                style={{ marginTop: 8, marginBottom: 24 }}
+              />
+
+              <Typography variant="h3" style={{ marginBottom: 12 }}>Ký điện tử bằng OTP</Typography>
+              <Typography variant="caption" color={colors.textSecondary} style={{ marginBottom: 16 }}>
+                Bằng việc nhập OTP, bạn đồng ý với các điều khoản của hợp đồng. OTP đã được gửi vào email của bạn.
+              </Typography>
+              <TextInput
+                label="Mã OTP"
+                placeholder="Nhập 6 số"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                maxLength={6}
+                style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
+              />
+              <Button 
+                title="Ký Hợp Đồng" 
+                onPress={handleSign} 
+                loading={loading}
+                style={{ marginTop: 16 }}
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

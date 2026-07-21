@@ -27,10 +27,29 @@ export default function ChapterDetail() {
       const data = await mangakaApi.getChapterDetail(chapterId as string);
       if (data) {
         try {
-          const progressData = await mangakaApi.getChapterProgress(chapterId as string);
-          setChapter({ ...data, ...progressData });
+          // Tính toán tiến độ trực tiếp từ danh sách trang thực tế thay vì dùng mock data
+          const [pagesData, namesData] = await Promise.all([
+            mangakaApi.getChapterPages(chapterId as string).catch(() => []),
+            mangakaApi.getChapterNames(chapterId as string).catch(() => ({ items: [] }))
+          ]);
+          
+          const pages = pagesData?.items || pagesData || [];
+          const namePages = namesData?.items?.[0]?.pages || [];
+          
+          // Tổng số trang = max của (số trang cấu hình, số trang Name thực tế, số trang bản thảo thực tế)
+          const actualTotalPages = Math.max(data.totalPages || 0, pages.length, namePages.length);
+          
+          const completedPages = pages.filter((p: any) => p.status === 'COMPLETED' || p.status === 'PUBLISHED').length;
+          const pendingPages = Math.max(0, actualTotalPages - completedPages);
+
+          setChapter({ 
+            ...data, 
+            totalPages: actualTotalPages,
+            pagesCompleted: completedPages,
+            pagesPending: pendingPages
+          });
         } catch (progressError) {
-          console.log('Error fetching progress', progressError);
+          console.log('Error calculating progress', progressError);
           setChapter(data);
         }
       } else {
@@ -95,11 +114,11 @@ export default function ChapterDetail() {
               <Typography variant="caption" color={currentColors.textSecondary}>Tổng số trang</Typography>
             </View>
             <View style={[styles.statBox, { borderLeftWidth: 1, borderRightWidth: 1, borderColor: currentColors.border }]}>
-              <Typography variant="h3">{chapter.pagesReady || 0}</Typography>
+              <Typography variant="h3">{chapter.pagesCompleted ?? chapter.pagesReady ?? 0}</Typography>
               <Typography variant="caption" color={currentColors.success}>Trang đã xong</Typography>
             </View>
             <View style={styles.statBox}>
-              <Typography variant="h3">{chapter.pagesPending || 0}</Typography>
+              <Typography variant="h3">{((chapter.pagesInProgress || 0) + (chapter.pagesNotStarted || 0)) || chapter.pagesPending || 0}</Typography>
               <Typography variant="caption" color={currentColors.warning}>Trang đang chờ</Typography>
             </View>
           </View>

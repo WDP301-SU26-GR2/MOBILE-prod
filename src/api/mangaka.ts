@@ -113,6 +113,10 @@ export const mangakaApi = {
     const res = await apiClient.get(`/contracts/${id}/versions`);
     return res.data?.data;
   },
+  getContractPdf: async (id: string) => {
+    const res = await apiClient.get(`/contracts/${id}/pdf`);
+    return res.data?.data;
+  },
 
   // Tasks - full workflow
   getTasks: async (params?: any) => {
@@ -130,6 +134,10 @@ export const mangakaApi = {
   startTask: async (taskId: string) => {
     const res = await apiClient.post(`/tasks/${taskId}/start`);
     return res.data;
+  },
+  getTaskDownloadUrl: async (taskId: string, key: string) => {
+    const res = await apiClient.post(`/tasks/${taskId}/download-url`, { key });
+    return res.data?.data?.downloadUrl || res.data?.downloadUrl;
   },
   submitTask: async (taskId: string, resultKey: string) => {
     const res = await apiClient.post(`/tasks/${taskId}/submit`, { resultFile: resultKey });

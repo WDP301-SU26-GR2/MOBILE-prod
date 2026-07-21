@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { CheckCircle2, Clock } from 'lucide-react-native';
+import { CheckCircle2, Clock, Lock } from 'lucide-react-native';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { Typography } from '../../../components/Typography';
 import { Button } from '../../../components/Button';
@@ -55,7 +55,7 @@ export default function VoteIndexScreen() {
       const data = await publicApi.getVoteContext();
       if (data && data.period) {
         setPeriod(data.period);
-        setSeriesPool(data.seriesPool || []);
+        setSeriesPool(data.series || []);
       }
     } catch (error) {
       console.error('Failed to load vote context', error);
@@ -90,7 +90,7 @@ export default function VoteIndexScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]} edges={['bottom', 'left', 'right']}>
         <ActivityIndicator size="large" color={currentColors.primary} style={styles.loader} />
       </SafeAreaView>
     );
@@ -98,7 +98,7 @@ export default function VoteIndexScreen() {
 
   if (!period) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]} edges={['bottom', 'left', 'right']}>
         <View style={styles.emptyState}>
           <Clock size={64} color={currentColors.textSecondary} />
           <Typography variant="h2" style={[styles.emptyTitle, { color: currentColors.text }]}>
@@ -118,9 +118,9 @@ export default function VoteIndexScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]} edges={['bottom', 'left', 'right']}>
       <View style={styles.header}>
-        <Typography variant="h2" style={{ color: currentColors.text }}>
+        <Typography variant="h2" style={{ color: currentColors.text, marginBottom: 2 }}>
           Kỳ bình chọn #{period.number}
         </Typography>
         <View style={styles.countdownContainer}>
@@ -129,12 +129,6 @@ export default function VoteIndexScreen() {
             Còn lại: {timeRemaining}
           </Typography>
         </View>
-      </View>
-      
-      <View style={[styles.statsContainer, { backgroundColor: currentColors.surface }]}>
-        <Typography variant="bodyBold" style={{ color: currentColors.text }}>
-          Đã chọn {selectedIds.length}/{period.maxSeriesPerVote} truyện
-        </Typography>
       </View>
 
       <ScrollView contentContainerStyle={styles.grid}>
@@ -154,11 +148,20 @@ export default function VoteIndexScreen() {
               activeOpacity={0.7}
               onPress={() => !isDisabled && toggleSelection(series.id)}
             >
-              <Image
-                source={series.coverImageUrl}
-                style={styles.coverImage}
-                contentFit="cover"
-              />
+              {series.coverImageUrl ? (
+                <Image
+                  source={{ uri: series.coverImageUrl }}
+                  style={styles.coverImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={[styles.coverImage, styles.noImageContainer, { backgroundColor: currentColors.background }]}>
+                  <Lock size={24} color={currentColors.textSecondary} />
+                  <Typography variant="caption" style={{ color: currentColors.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 4 }}>
+                    Đăng nhập để xem ảnh
+                  </Typography>
+                </View>
+              )}
               {isSelected && (
                 <View style={styles.selectedOverlay}>
                   <CheckCircle2 size={32} color={currentColors.primary} fill="#fff" />
@@ -221,16 +224,11 @@ const styles = StyleSheet.create({
   countdownContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 0,
     gap: 6,
   },
   countdownText: {
     fontWeight: 'bold',
-  },
-  statsContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
   },
   grid: {
     flexDirection: 'row',
@@ -256,6 +254,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },

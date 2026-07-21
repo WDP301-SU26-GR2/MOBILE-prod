@@ -35,7 +35,11 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     try {
       setLoading(true);
-      await authApi.register(formData);
+      const payload = {
+        ...formData,
+        displayName: formData.displayName || formData.name
+      };
+      await authApi.register(payload);
       router.push({
         pathname: '/(auth)/verify',
         params: { email: formData.email }

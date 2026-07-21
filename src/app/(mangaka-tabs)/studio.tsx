@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ScrollView, Modal, ActivityIndicator, TextInput as RNTextInput } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ScrollView, Modal, ActivityIndicator, TextInput as RNTextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Typography } from '../../components/Typography';
 import { TextInput } from '../../components/TextInput';
 import { Button } from '../../components/Button';
@@ -82,6 +83,79 @@ const AssistantTab = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Invite modal state
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [selectedAssistant, setSelectedAssistant] = useState<any>(null);
+  
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [hireStart, setHireStart] = useState(new Date());
+  const [hireEnd, setHireEnd] = useState(() => {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    return nextMonth;
+  });
+  
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const onChangeStart = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowStartPicker(false);
+    if (selectedDate) setHireStart(selectedDate);
+  };
+
+  const onChangeEnd = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowEndPicker(false);
+    if (selectedDate) setHireEnd(selectedDate);
+  };
+
+  const TASK_OPTIONS = ['BACKGROUND', 'SCREENTONE', 'EFFECT_LINES', 'INKING', 'COLORING', 'LETTERING'];
+
+  const toggleTask = (task: string) => {
+    setSelectedTasks(prev => 
+      prev.includes(task) ? prev.filter(t => t !== task) : [...prev, task]
+    );
+  };
+
+  const openInviteModal = (assistant: any) => {
+    setSelectedAssistant(assistant);
+    setSelectedTasks([]);
+    setInviteModalVisible(true);
+  };
+
+  const handleSendInvite = async () => {
+    if (!selectedAssistant) return;
+    if (selectedTasks.length === 0) {
+      Alert.alert('Lỗi', 'Vui lòng chọn ít nhất 1 loại công việc.');
+      return;
+    }
+    if (!hireStart || !hireEnd) {
+      Alert.alert('Lỗi', 'Vui lòng nhập ngày bắt đầu và kết thúc.');
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const startIso = hireStart.toISOString();
+      const endIso = hireEnd.toISOString();
+      
+      await mangakaApi.createCollaborationInvite({
+        assistantId: selectedAssistant.userId || selectedAssistant.id,
+        hireStart: startIso,
+        hireEnd: endIso,
+        taskTypes: selectedTasks
+      });
+      
+      Alert.alert('Thành công', 'Đã gửi lời mời cộng tác thành công!');
+      setInviteModalVisible(false);
+      setSelectedAssistant(null);
+      setSelectedTasks([]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', error?.response?.data?.message || 'Không thể gửi lời mời.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchText);
@@ -94,7 +168,12 @@ const AssistantTab = () => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
-      const data = await mangakaApi.getAssistants({ q: debouncedSearch, limit: 20 });
+      const params: any = { limit: 20 };
+      if (debouncedSearch && debouncedSearch.trim().length > 0) {
+        params.q = debouncedSearch.trim();
+      }
+      
+      const data = await mangakaApi.getAssistants(params);
       setAssistants(data?.items || data || []);
     } catch (error) {
       console.log('Error fetching assistants', error);
@@ -112,10 +191,7 @@ const AssistantTab = () => {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
-      onPress={() => {
-        Alert.alert('Tính năng đang phát triển', 'Vui lòng quay lại sau.');
-        // router.push(`/(mangaka-tabs)/studio/assistant/${item.userId}`)
-      }}
+      onPress={() => openInviteModal(item)}
     >
       <View style={styles.cardHeader}>
         <Avatar avatarKey={item.avatar} size={56} />
@@ -160,7 +236,7 @@ const AssistantTab = () => {
         title="Mời cộng tác" 
         variant="outline" 
         style={{ marginTop: 16 }}
-        onPress={() => Alert.alert('Tính năng đang phát triển', 'Vui lòng vào chi tiết Trợ lý để gửi lời mời')} 
+        onPress={() => openInviteModal(item)} 
       />
     </TouchableOpacity>
   );
@@ -204,6 +280,126 @@ const AssistantTab = () => {
           }
         />
       )}
+
+      {/* Invite Modal */}
+      <Modal visible={inviteModalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: currentColors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Typography variant="h2">Mời cộng tác</Typography>
+              <TouchableOpacity onPress={() => setInviteModalVisible(false)}>
+                <XCircle size={24} color={currentColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedAssistant && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <Avatar avatarKey={selectedAssistant.avatar} size={40} />
+                  <View>
+                    <Typography variant="bodyBold">{selectedAssistant.displayName}</Typography>
+                    <Typography variant="caption" color={currentColors.textSecondary}>Trợ lý</Typography>
+                  </View>
+                </View>
+              )}
+
+              <Typography variant="bodyBold" style={{ marginBottom: 8 }}>Thời gian thuê</Typography>
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 8 }}>Bắt đầu</Typography>
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={hireStart}
+                      mode="date"
+                      display="default"
+                      locale="vi-VN"
+                      themeVariant={theme === 'dark' ? 'dark' : 'light'}
+                      textColor={currentColors.text}
+                      onChange={onChangeStart}
+                      style={{ alignSelf: 'flex-start' }}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity 
+                        style={{ height: 44, backgroundColor: currentColors.background, borderWidth: 1, borderColor: currentColors.border, borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center' }}
+                        onPress={() => setShowStartPicker(true)}
+                      >
+                        <Typography variant="body">{hireStart.toLocaleDateString('vi-VN')}</Typography>
+                      </TouchableOpacity>
+                      {showStartPicker && (
+                        <DateTimePicker
+                          value={hireStart}
+                          mode="date"
+                          display="default"
+                          onChange={onChangeStart}
+                        />
+                      )}
+                    </>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 8 }}>Kết thúc</Typography>
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={hireEnd}
+                      mode="date"
+                      display="default"
+                      locale="vi-VN"
+                      themeVariant={theme === 'dark' ? 'dark' : 'light'}
+                      textColor={currentColors.text}
+                      onChange={onChangeEnd}
+                      style={{ alignSelf: 'flex-start' }}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity 
+                        style={{ height: 44, backgroundColor: currentColors.background, borderWidth: 1, borderColor: currentColors.border, borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center' }}
+                        onPress={() => setShowEndPicker(true)}
+                      >
+                        <Typography variant="body">{hireEnd.toLocaleDateString('vi-VN')}</Typography>
+                      </TouchableOpacity>
+                      {showEndPicker && (
+                        <DateTimePicker
+                          value={hireEnd}
+                          mode="date"
+                          display="default"
+                          onChange={onChangeEnd}
+                        />
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+
+              <Typography variant="bodyBold" style={{ marginBottom: 8 }}>Loại công việc</Typography>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                {TASK_OPTIONS.map(task => {
+                  const isSelected = selectedTasks.includes(task);
+                  return (
+                    <TouchableOpacity 
+                      key={task}
+                      style={[
+                        styles.chip, 
+                        { backgroundColor: isSelected ? currentColors.primary : currentColors.background, borderColor: isSelected ? currentColors.primary : currentColors.border }
+                      ]}
+                      onPress={() => toggleTask(task)}
+                    >
+                      <Typography variant="caption" color={isSelected ? '#FFF' : currentColors.text}>{task}</Typography>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              
+              <Button 
+                title={isSubmitting ? "Đang gửi..." : "Gửi lời mời"} 
+                onPress={handleSendInvite}
+                disabled={isSubmitting}
+                style={{ marginBottom: 30 }}
+              />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -371,12 +567,7 @@ const InvitesTab = () => {
         />
       )}
 
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: currentColors.primary }]}
-        onPress={() => Alert.alert('Thông báo', 'Vui lòng vào chi tiết Trợ lý để gửi lời mời mới.')}
-      >
-        <Plus size={24} color="#FFF" />
-      </TouchableOpacity>
+
     </View>
   );
 };
@@ -649,7 +840,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 32,
     right: 24,
     width: 56,
     height: 56,

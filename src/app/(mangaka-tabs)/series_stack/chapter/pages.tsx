@@ -15,16 +15,17 @@ interface Page {
   status: 'DRAFT' | 'COMPLETED' | 'REVISING';
   originalFile?: string;
   compositeFile?: string;
+  displayFile?: string;
 }
 
-const PageThumbnail = ({ page, currentColors, onPress }: { page: Page, currentColors: any, onPress: (url: string) => void }) => {
+const PageThumbnail = ({ page, currentColors, onPress, onLongPress }: { page: Page, currentColors: any, onPress: (url: string) => void, onLongPress: (page: Page) => void }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     const fetchUrl = async () => {
-      const fileKey = page.compositeFile || page.originalFile;
+      const fileKey = page.displayFile || page.compositeFile || page.originalFile;
       if (!fileKey) {
         setLoading(false);
         return;
@@ -72,6 +73,7 @@ const PageThumbnail = ({ page, currentColors, onPress }: { page: Page, currentCo
     <TouchableOpacity 
       style={[styles.thumbnailContainer, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
       onPress={() => { if (imageUrl) onPress(imageUrl); }}
+      onLongPress={() => onLongPress(page)}
     >
       <View style={[styles.imageWrapper, { backgroundColor: currentColors.background }]}>
         {loading ? (
@@ -186,6 +188,51 @@ export default function ChapterPagesScreen() {
     );
   };
 
+  const handlePageOptions = (page: Page) => {
+    if (page.status === 'COMPLETED') {
+      Alert.alert('Không thể chỉnh sửa', 'Trang đã hoàn thành không thể sửa hoặc xoá.');
+      return;
+    }
+    Alert.alert('Tuỳ chọn trang ' + page.pageNumber, 'Bạn muốn làm gì?', [
+      { text: 'Huỷ', style: 'cancel' },
+      { 
+        text: 'Cập nhật (Demo)', 
+        onPress: async () => {
+          try {
+            await mangakaApi.updatePage(page.id, { compositeFile: 'demo_updated_composite_file' });
+            Alert.alert('Thành công', 'Đã cập nhật compositeFile.');
+            fetchPages();
+          } catch (e: any) {
+            Alert.alert('Lỗi', e.response?.data?.message || 'Không thể cập nhật trang.');
+          }
+        } 
+      },
+      { 
+        text: 'Xoá trang', 
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Xác nhận', 'Bạn có chắc muốn xoá trang này?', [
+            { text: 'Huỷ', style: 'cancel' },
+            { 
+              text: 'Xoá', 
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  // Giả lập API xoá trang, backend có endpoint xoá page không?
+                  // Giả định backend có apiClient.delete(`/pages/${page.id}`) -> chưa có trong mangakaApi.
+                  Alert.alert('Thông báo', 'Tính năng xoá trang sẽ sớm ra mắt.');
+                  fetchPages();
+                } catch (e: any) {
+                  Alert.alert('Lỗi', 'Không thể xoá trang');
+                }
+              }
+            }
+          ]);
+        }
+      }
+    ]);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]} edges={['top', 'left', 'right']}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -203,7 +250,7 @@ export default function ChapterPagesScreen() {
           numColumns={2}
           contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 80 }]}
           columnWrapperStyle={styles.columnWrapper}
-          renderItem={({ item }) => <PageThumbnail page={item} currentColors={currentColors} onPress={setSelectedImage} />}
+          renderItem={({ item }) => <PageThumbnail page={item} currentColors={currentColors} onPress={setSelectedImage} onLongPress={handlePageOptions} />}
           ListEmptyComponent={renderEmpty}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={currentColors.primary} />

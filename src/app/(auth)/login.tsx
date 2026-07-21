@@ -37,8 +37,10 @@ export default function LoginScreen() {
         setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
         if (userRole === 'ASSISTANT') {
           router.replace('/(assistant-tabs)');
-        } else {
+        } else if (userRole === 'MANGAKA') {
           router.replace('/(mangaka-tabs)');
+        } else {
+          Alert.alert('Chưa hỗ trợ', 'Vui lòng dùng bản web cho vai trò của bạn.');
         }
       }
     } catch (error: any) {
@@ -76,14 +78,16 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       // Giả lập xử lý token hoặc gửi về BE
-      const res = await authApi.loginWithGoogle({ token });
+      const res = await authApi.loginWithGoogle({ idToken: token });
       if (res.success && res.data) {
         const userRole = res.data.user.role;
         setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
         if (userRole === 'ASSISTANT') {
           router.replace('/(assistant-tabs)');
-        } else {
+        } else if (userRole === 'MANGAKA') {
           router.replace('/(mangaka-tabs)');
+        } else {
+          Alert.alert('Chưa hỗ trợ', 'Vui lòng dùng bản web cho vai trò của bạn.');
         }
       }
     } catch (error: any) {
@@ -135,7 +139,7 @@ export default function LoginScreen() {
           leftIcon={<Lock size={20} color={currentColors.textSecondary} />}
         />
         
-        <TouchableOpacity style={styles.forgotPassword}>
+        <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/(auth)/forgot-password')}>
           <Typography variant="bodyMedium" color={currentColors.primary}>Quên mật khẩu?</Typography>
         </TouchableOpacity>
         

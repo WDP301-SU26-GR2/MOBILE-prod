@@ -133,7 +133,9 @@ export default function SeriesDetailMangaka() {
           {activeTab === 'OVERVIEW' && (
             <View>
               <Typography variant="h3" color={currentColors.text} style={{ marginBottom: 8 }}>Tóm tắt</Typography>
-              <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>{series.synopsis}</Typography>
+              <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>
+                {series.proposal?.synopsis || 'Chưa có tóm tắt.'}
+              </Typography>
               
               {isProposal && series.status === 'DRAFT' && (
                 <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>

@@ -29,25 +29,21 @@ export default function TaskDetailScreen() {
     try {
       setLoading(true);
       const res = await mangakaApi.getTask(id as string);
-      if (res && res.data) {
-        const t = res.data;
+      if (res) { // getTask returns data directly now due to mangakaApi updates? Wait, mangakaApi.getTask returns res.data?.data
+        const t = res;
         setTask(t);
         
-        if (t.page?.originalFile && !t.page.originalFile.startsWith('http')) {
-          const urlRes = await mangakaApi.getSignedUrl(t.page.originalFile);
-          if (urlRes?.data) setOriginalUrl(urlRes.data);
-        } else if (t.page?.originalFile) {
-          setOriginalUrl(t.page.originalFile);
+        if (t.page?.originalFile) {
+          const url = await mangakaApi.getTaskDownloadUrl(id as string, t.page.originalFile);
+          setOriginalUrl(url);
         }
 
         if (t.versions && t.versions.length > 0) {
           const urls: Record<string, string> = {};
           for (const v of t.versions) {
-            if (v.resultFile && !v.resultFile.startsWith('http')) {
-              const u = await mangakaApi.getSignedUrl(v.resultFile);
-              if (u?.data) urls[v.id] = u.data;
-            } else if (v.resultFile) {
-              urls[v.id] = v.resultFile;
+            if (v.file) {
+              const u = await mangakaApi.getTaskDownloadUrl(id as string, v.file);
+              if (u) urls[v.id] = u;
             }
           }
           setVersionUrls(urls);
@@ -116,7 +112,17 @@ export default function TaskDetailScreen() {
         {originalUrl && (
           <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
             <Typography variant="h3" style={{ marginBottom: 12 }}>File gốc - Trang {task.page?.pageNumber}</Typography>
-            <Image source={{ uri: originalUrl }} style={styles.imagePreview} contentFit="contain" />
+            <View style={{ position: 'relative' }}>
+              <Image source={{ uri: originalUrl }} style={styles.imagePreview} contentFit="contain" />
+              {task.region && (
+                <View style={[styles.regionOverlay, { 
+                  left: `${task.region.x * 100}%`, 
+                  top: `${task.region.y * 100}%`, 
+                  width: `${task.region.width * 100}%`, 
+                  height: `${task.region.height * 100}%` 
+                }]} />
+              )}
+            </View>
             <Button 
               title="Tải về" 
               variant="outline" 
@@ -189,5 +195,6 @@ const styles = StyleSheet.create({
   imagePreview: { width: '100%', height: 300, backgroundColor: '#eee', borderRadius: 8 },
   thumbnail: { width: 100, height: 100, borderRadius: 8, marginTop: 8 },
   actionSection: { marginBottom: 16 },
-  banner: { padding: 16, borderRadius: 8, alignItems: 'center' }
+  banner: { padding: 16, borderRadius: 8, alignItems: 'center' },
+  regionOverlay: { position: 'absolute', backgroundColor: 'rgba(255, 0, 0, 0.2)', borderWidth: 2, borderColor: 'red' }
 });
