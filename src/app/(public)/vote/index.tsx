@@ -10,26 +10,30 @@ import { Button } from '../../../components/Button';
 import { publicApi } from '../../../api/public';
 import { colors } from '../../../theme/colors';
 
+type VoteType = 'WEEKLY' | 'MONTHLY';
+
 export default function VoteIndexScreen() {
   const router = useRouter();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
   
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<any>(null);
-  const [seriesPool, setSeriesPool] = useState<any[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [contexts, setContexts] = useState<Partial<Record<VoteType, any>>>({});
+  const [activeType, setActiveType] = useState<VoteType>('WEEKLY');
+  const [selectedByType, setSelectedByType] = useState<Record<VoteType, string[]>>({ WEEKLY: [], MONTHLY: [] });
   const [timeRemaining, setTimeRemaining] = useState('');
 
-  useEffect(() => {
-    loadVoteContext();
-  }, []);
+  const activeContext = contexts[activeType];
+  const period = activeContext?.period ? { ...activeContext.period, number: activeContext.period.issueNumber ?? activeContext.period.number } : null;
+  const periodEndDate = activeContext?.period?.endDate;
+  const seriesPool = activeContext?.series ?? [];
+  const selectedIds = selectedByType[activeType];
 
   useEffect(() => {
-    if (!period?.endDate) return;
+    if (!periodEndDate) return;
     
     const updateCountdown = () => {
-      const end = new Date(period.endDate).getTime();
+      const end = new Date(periodEndDate).getTime();
       const now = new Date().getTime();
       const diff = end - now;
       
@@ -48,15 +52,43 @@ export default function VoteIndexScreen() {
     updateCountdown();
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
-  }, [period]);
+  }, [periodEndDate]);
 
   const loadVoteContext = async () => {
     try {
-      const data = await publicApi.getVoteContext();
-      if (data && data.period) {
-        setPeriod(data.period);
-        setSeriesPool(data.series || []);
-      }
+      const getCatalogForType = async (publicationType: VoteType) => {
+        const first = await publicApi.getCatalog({ publicationType, limit: 50, offset: 0 });
+        const pageCount = Math.ceil((first?.total ?? 0) / 50);
+        const rest = await Promise.all(
+          Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) =>
+            publicApi.getCatalog({ publicationType, limit: 50, offset: (index + 1) * 50 })
+          )
+        );
+        return [first, ...rest].flatMap(page => page?.items ?? []);
+      };
+      const [weekly, monthly, weeklyCatalog, monthlyCatalog] = await Promise.all([
+        publicApi.getVoteContext({ publicationType: 'WEEKLY' }),
+        publicApi.getVoteContext({ publicationType: 'MONTHLY' }),
+        getCatalogForType('WEEKLY'),
+        getCatalogForType('MONTHLY'),
+      ]);
+      const enrich = (context: any, catalog: any, publicationType: VoteType) => {
+        const catalogById = new Map<string, any>(catalog.map((item: any) => [item.id, item]));
+        return {
+          ...context,
+          series: (context?.series ?? []).map((item: any) => ({
+            ...item,
+            coverImageUrl: catalogById.get(item.id)?.coverImageUrl,
+            publicationType,
+          })),
+        };
+      };
+      const nextContexts = {
+        WEEKLY: enrich(weekly, weeklyCatalog, 'WEEKLY'),
+        MONTHLY: enrich(monthly, monthlyCatalog, 'MONTHLY'),
+      };
+      setContexts(nextContexts);
+      if (!nextContexts.WEEKLY?.period && nextContexts.MONTHLY?.period) setActiveType('MONTHLY');
     } catch (error) {
       console.error('Failed to load vote context', error);
     } finally {
@@ -64,15 +96,21 @@ export default function VoteIndexScreen() {
     }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadVoteContext();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   const toggleSelection = (id: string) => {
-    setSelectedIds(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
-      }
-      if (period && prev.length >= period.maxSeriesPerVote) {
-        return prev;
-      }
-      return [...prev, id];
+    setSelectedByType(previous => {
+      const selected = previous[activeType];
+      let next: string[];
+      if (selected.includes(id)) next = selected.filter(item => item !== id);
+      else if (period && selected.length >= period.maxSeriesPerVote) next = selected;
+      else next = [...selected, id];
+      return { ...previous, [activeType]: next };
     });
   };
 
@@ -83,7 +121,8 @@ export default function VoteIndexScreen() {
       pathname: '/(public)/vote/otp',
       params: {
         periodId: period.id,
-        selectedSeriesIds: JSON.stringify(selectedIds)
+        selectedSeriesIds: JSON.stringify(selectedIds),
+        publicationType: activeType,
       }
     });
   };
@@ -131,8 +170,23 @@ export default function VoteIndexScreen() {
         </View>
       </View>
 
+      <View style={styles.tabRow}>
+        {(['WEEKLY', 'MONTHLY'] as VoteType[]).map(type => (
+          <TouchableOpacity
+            key={type}
+            onPress={() => setActiveType(type)}
+            disabled={!contexts[type]?.period}
+            style={[styles.tab, { borderColor: currentColors.border }, !contexts[type]?.period && { opacity: 0.45 }, activeType === type && { backgroundColor: currentColors.primary, borderColor: currentColors.primary }]}
+          >
+            <Typography variant="caption" color={activeType === type ? '#FFF' : currentColors.text}>
+              {type === 'WEEKLY' ? 'Tuần' : 'Tháng'}
+            </Typography>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <ScrollView contentContainerStyle={styles.grid}>
-        {seriesPool.map(series => {
+        {seriesPool.map((series: any) => {
           const isSelected = selectedIds.includes(series.id);
           const isDisabled = !isSelected && selectedIds.length >= period.maxSeriesPerVote;
           
@@ -182,7 +236,7 @@ export default function VoteIndexScreen() {
 
       <View style={[styles.footer, { backgroundColor: currentColors.surface, borderTopColor: currentColors.border }]}>
         <Button
-          title="Tiếp tục"
+          title={`Tiếp tục (${selectedIds.length}/${period.maxSeriesPerVote})`}
           onPress={handleContinue}
           disabled={selectedIds.length === 0}
         />
@@ -221,6 +275,8 @@ const styles = StyleSheet.create({
   header: {
     padding: 16,
   },
+  tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  tab: { flex: 1, alignItems: 'center', borderWidth: 1, borderRadius: 18, paddingVertical: 9 },
   countdownContainer: {
     flexDirection: 'row',
     alignItems: 'center',

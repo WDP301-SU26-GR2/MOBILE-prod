@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { Typography } from '../../../components/Typography';
 import { Button } from '../../../components/Button';
 import { TextInput } from '../../../components/TextInput';
-import { publicApi } from '../../../api/public';
+import { DISABLED_RECAPTCHA_TOKEN, publicApi } from '../../../api/public';
 import { colors } from '../../../theme/colors';
-import { RecaptchaV3 } from '../../../components/RecaptchaV3';
+import { RecaptchaV3, RecaptchaV3Ref } from '../../../components/RecaptchaV3';
 
 export default function VoteOtpScreen() {
   const { periodId, selectedSeriesIds } = useLocalSearchParams();
@@ -23,12 +22,10 @@ export default function VoteOtpScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [step, setStep] = useState<'email' | 'otp'>('email');
-
-  const recaptchaRef = React.useRef<any>(null);
-  const [pendingAction, setPendingAction] = useState<'otp' | 'vote' | null>(null);
-
-  const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY || '';
-  const captchaUrl = 'https://captcha.novaproj.site'; // Make sure this is whitelisted in reCAPTCHA Admin
+  const captchaActionRef = useRef<'otp' | 'vote' | null>(null);
+  const recaptchaRef = useRef<RecaptchaV3Ref>(null);
+  const recaptchaSiteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
+  const recaptchaOrigin = process.env.EXPO_PUBLIC_RECAPTCHA_ORIGIN;
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -38,19 +35,28 @@ export default function VoteOtpScreen() {
     return () => clearTimeout(timer);
   }, [cooldown]);
 
-  const initiateSendCode = () => {
+  const requestCaptcha = (action: 'otp' | 'vote') => {
+    if (!recaptchaSiteKey || !recaptchaOrigin) {
+      if (action === 'otp') void sendCode(DISABLED_RECAPTCHA_TOKEN);
+      else void submitVote(DISABLED_RECAPTCHA_TOKEN);
+      return;
+    }
+    if (!recaptchaRef.current) {
+      Alert.alert('reCAPTCHA đang khởi tạo', 'Vui lòng thử lại sau vài giây.');
+      return;
+    }
+    captchaActionRef.current = action;
+    recaptchaRef.current.execute(action === 'otp' ? 'vote_otp' : 'submit_vote');
+  };
+
+  const sendCode = async (captchaToken: string) => {
     if (!email || !email.includes('@')) {
       Alert.alert('Lỗi', 'Vui lòng nhập email hợp lệ');
       return;
     }
     setIsSending(true);
-    setPendingAction('otp');
-    recaptchaRef.current?.execute('otp');
-  };
-
-  const handleSendCode = async (token: string) => {
     try {
-      await publicApi.sendVoteOtp(email, token);
+      await publicApi.sendVoteOtp(email, captchaToken);
       setStep('otp');
       setCooldown(60);
     } catch (error: any) {
@@ -63,21 +69,15 @@ export default function VoteOtpScreen() {
       }
     } finally {
       setIsSending(false);
-      setPendingAction(null);
     }
   };
 
-  const initiateSubmitVote = () => {
+  const submitVote = async (captchaToken: string) => {
     if (otp.length < 6) {
       Alert.alert('Lỗi', 'Mã xác nhận không hợp lệ');
       return;
     }
     setIsSubmitting(true);
-    setPendingAction('vote');
-    recaptchaRef.current?.execute('vote');
-  };
-
-  const handleSubmitVote = async (token: string) => {
     try {
       let seriesIds = [];
       try {
@@ -91,10 +91,9 @@ export default function VoteOtpScreen() {
         identity: email,
         otpCode: otp,
         seriesIds,
-        captchaToken: token
+        captchaToken,
       });
       
-      await AsyncStorage.setItem(`voted_${periodId}`, 'true');
       router.replace('/(public)/vote/done');
     } catch (error: any) {
       const errRes = error.response?.data;
@@ -107,16 +106,34 @@ export default function VoteOtpScreen() {
       }
     } finally {
       setIsSubmitting(false);
-      setPendingAction(null);
     }
   };
 
-  const handleRecaptchaToken = (token: string) => {
-    if (pendingAction === 'otp') {
-      handleSendCode(token);
-    } else if (pendingAction === 'vote') {
-      handleSubmitVote(token);
+  const initiateSendCode = () => {
+    if (!email || !email.includes('@')) {
+      Alert.alert('Lỗi', 'Vui lòng nhập email hợp lệ');
+      return;
     }
+    requestCaptcha('otp');
+  };
+
+  const initiateSubmitVote = () => {
+    if (otp.length !== 6) {
+      Alert.alert('Lỗi', 'Mã xác nhận không hợp lệ');
+      return;
+    }
+    requestCaptcha('vote');
+  };
+
+  const handleCaptchaToken = (token: string) => {
+    const action = captchaActionRef.current;
+    captchaActionRef.current = null;
+    if (!token || !action) {
+      Alert.alert('Xác thực thất bại', 'Không lấy được mã reCAPTCHA. Vui lòng thử lại.');
+      return;
+    }
+    if (action === 'otp') void sendCode(token);
+    else void submitVote(token);
   };
 
   return (
@@ -134,6 +151,14 @@ export default function VoteOtpScreen() {
           </Typography>
           
           <View style={[styles.card, { backgroundColor: currentColors.surface }]}>
+            {recaptchaSiteKey && recaptchaOrigin && (
+              <RecaptchaV3
+                ref={recaptchaRef}
+                siteKey={recaptchaSiteKey}
+                url={recaptchaOrigin}
+                onReceiveToken={handleCaptchaToken}
+              />
+            )}
             <TextInput
               label="Địa chỉ Email"
               value={email}
@@ -144,23 +169,13 @@ export default function VoteOtpScreen() {
               editable={step === 'email' || cooldown === 0}
             />
             
-            {step === 'email' ? (
+            {step === 'email' && (
               <Button
                 title="Gửi mã"
                 onPress={initiateSendCode}
                 loading={isSending}
                 style={styles.actionButton}
               />
-            ) : (
-              <View style={styles.resendContainer}>
-                <Button
-                  title={cooldown > 0 ? `Gửi lại mã (${cooldown}s)` : "Gửi lại mã"}
-                  onPress={initiateSendCode}
-                  variant="outline"
-                  disabled={cooldown > 0 || isSending}
-                  style={styles.resendButton}
-                />
-              </View>
             )}
             
             {step === 'otp' && (
@@ -173,6 +188,15 @@ export default function VoteOtpScreen() {
                   keyboardType="number-pad"
                   maxLength={6}
                 />
+                <View style={styles.resendContainer}>
+                  <Button
+                    title={cooldown > 0 ? `Gửi lại mã sau ${cooldown}s` : "Không nhận được mã? Gửi lại"}
+                    onPress={initiateSendCode}
+                    variant="outlined"
+                    disabled={cooldown > 0 || isSending}
+                    style={styles.resendButton}
+                  />
+                </View>
                 
                 <Button
                   title="Gửi phiếu bầu"
@@ -186,12 +210,6 @@ export default function VoteOtpScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <RecaptchaV3 
-        ref={recaptchaRef} 
-        siteKey={siteKey} 
-        url={captchaUrl} 
-        onReceiveToken={handleRecaptchaToken} 
-      />
     </SafeAreaView>
   );
 }
@@ -218,12 +236,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   resendContainer: {
-    alignItems: 'flex-end',
-    marginTop: 8,
+    alignItems: 'flex-start',
+    marginTop: -4,
+    marginBottom: 4,
   },
   resendButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    height: 40,
+    alignSelf: 'flex-start',
   },
   otpSection: {
     marginTop: 24,

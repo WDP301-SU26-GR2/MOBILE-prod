@@ -7,7 +7,8 @@ export interface RecaptchaV3Ref {
 
 interface RecaptchaV3Props {
   siteKey: string;
-  url: string; // Fake URL to bypass origin restrictions
+  /** A domain registered for this reCAPTCHA site key. */
+  url: string;
   onReceiveToken: (token: string) => void;
 }
 
@@ -58,3 +59,5 @@ export const RecaptchaV3 = forwardRef<RecaptchaV3Ref, RecaptchaV3Props>(
     );
   }
 );
+
+RecaptchaV3.displayName = 'RecaptchaV3';

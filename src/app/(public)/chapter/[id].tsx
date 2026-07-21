@@ -2,14 +2,12 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Pressable, Dimensions, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { ArrowLeft, ChevronLeft, ChevronRight, Smartphone, MoveHorizontal, MoveVertical } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, ChevronRight, MoveHorizontal, MoveVertical } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Typography } from '../../../components/Typography';
 import { Button } from '../../../components/Button';
 import { publicApi } from '../../../api/public';
-import { useThemeStore } from '../../../store/useThemeStore';
-import { colors } from '../../../theme/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -17,9 +15,6 @@ export default function ChapterReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { theme } = useThemeStore();
-  const currentColors = colors[theme];
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
@@ -29,11 +24,7 @@ export default function ChapterReaderScreen() {
 
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    fetchChapter();
-  }, [id]);
-
-  const fetchChapter = async () => {
+  const fetchChapter = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -48,7 +39,12 @@ export default function ChapterReaderScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void fetchChapter(), 0);
+    return () => clearTimeout(timer);
+  }, [fetchChapter]);
 
   const toggleOverlay = () => setOverlayVisible(!overlayVisible);
   const toggleReadMode = () => setReadMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical');
@@ -78,9 +74,9 @@ export default function ChapterReaderScreen() {
     }
   }, []);
 
-  const viewabilityConfig = useRef({
+  const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,
-  }).current;
+  };
 
   if (loading) {
     return (
@@ -153,7 +149,7 @@ export default function ChapterReaderScreen() {
 
       <Button 
         title="Bình chọn truyện này" 
-        variant="outline"
+        variant="outlined"
         onPress={handleVote} 
         style={styles.endButton}
       />

@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
+import { Image } from 'expo-image';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 
 export default function PublicLayout() {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
+  const appAvatarUrl = process.env.EXPO_PUBLIC_APP_AVATAR_URL;
 
   return (
     <Stack 
@@ -13,6 +15,14 @@ export default function PublicLayout() {
         headerStyle: { backgroundColor: currentColors.surface },
         headerTintColor: currentColors.text,
         headerShadowVisible: false,
+        headerRight: () =>
+          appAvatarUrl ? (
+            <Image
+              source={{ uri: appAvatarUrl }}
+              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 8 }}
+              contentFit="cover"
+            />
+          ) : null,
       }}
     >
       <Stack.Screen 

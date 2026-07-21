@@ -4,8 +4,10 @@ import { useThemeStore } from '../store/useThemeStore';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
+type TypographyVariant = keyof typeof typography.sizes | 'caption' | 'bodyMedium' | 'bodyBold';
+
 interface TypographyProps extends TextProps {
-  variant?: keyof typeof typography.sizes;
+  variant?: TypographyVariant;
   font?: keyof typeof typography.fonts;
   color?: string;
   align?: 'auto' | 'left' | 'right' | 'center' | 'justify';
@@ -23,12 +25,16 @@ export const Typography: React.FC<TypographyProps> = ({
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
 
+  const fontSize = typography.sizes[
+    variant === 'caption' ? 'label' : variant === 'bodyMedium' || variant === 'bodyBold' ? 'body' : variant
+  ];
+
   return (
     <Text
       style={[
         {
           fontFamily: typography.fonts[font],
-          fontSize: typography.sizes[variant],
+          fontSize,
           color: color || currentColors.text,
           textAlign: align,
         },

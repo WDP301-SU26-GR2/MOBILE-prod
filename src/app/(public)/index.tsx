@@ -3,17 +3,21 @@ import { View, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, St
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Typography } from '../../components/Typography';
+import { TextInput } from '../../components/TextInput';
 import { publicApi, SeriesPublic } from '../../api/public';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
-import { Trophy, ChevronRight } from 'lucide-react-native';
+import { Trophy, ChevronRight, LogIn, PenLine } from 'lucide-react-native';
 
 export default function PublicHome() {
   const router = useRouter();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
   const [series, setSeries] = useState<SeriesPublic[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [type, setType] = useState<string>(''); // empty means ALL
@@ -21,30 +25,45 @@ export default function PublicHome() {
   const [voteContext, setVoteContext] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchCatalog = async () => {
+  const fetchCatalog = async (append = false) => {
+    const nextOffset = append ? offset : 0;
     try {
+      if (append) setLoadingMore(true);
       const [catalogData, voteData] = await Promise.all([
-        publicApi.getCatalog({ publicationType: type || undefined, q: searchQuery || undefined }),
+        publicApi.getCatalog({ publicationType: type || undefined, q: searchQuery || undefined, limit: 20, offset: nextOffset }),
         publicApi.getVoteContext()
       ]);
-      setSeries(catalogData?.items || []);
+      const items = catalogData?.items || [];
+      setSeries(current => append ? [...current, ...items] : items);
+      setOffset(nextOffset + items.length);
+      setHasMore(nextOffset + items.length < (catalogData?.total ?? 0));
       setVoteContext(voteData);
     } catch (e) {
       console.log('Fetch catalog error', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    setLoading(true);
-    fetchCatalog();
+    const timer = setTimeout(() => {
+      setLoading(true);
+      void fetchCatalog();
+    }, 0);
+    return () => clearTimeout(timer);
+  // fetchCatalog is intentionally triggered by a type change; text search uses explicit submit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchCatalog();
+  };
+
+  const loadMore = () => {
+    if (!loading && !loadingMore && hasMore) void fetchCatalog(true);
   };
 
   const renderItem = ({ item }: { item: SeriesPublic }) => (
@@ -72,9 +91,19 @@ export default function PublicHome() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.header}>
-        <Typography variant="h1">Danh mục Manga</Typography>
-        <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={[styles.loginBtn, { backgroundColor: currentColors.primary }]}>
-          <Typography variant="caption" color="#FFF">Đăng nhập</Typography>
+        <View style={styles.titleBlock}>
+          <Typography variant="h2" numberOfLines={1}>Danh mục Manga</Typography>
+          <Typography variant="label" color={currentColors.textSecondary} numberOfLines={1}>Đọc truyện • Bình chọn</Typography>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={[styles.loginBtn, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+          <View style={[styles.loginIcon, { backgroundColor: `${currentColors.primary}18` }]}>
+            <PenLine size={15} color={currentColors.primary} />
+          </View>
+          <View style={styles.loginCopy}>
+            <Typography variant="label" color={currentColors.primary}>KHU SÁNG TÁC</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Mangaka • Assistant • Editor</Typography>
+          </View>
+          <LogIn size={17} color={currentColors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -119,6 +148,16 @@ export default function PublicHome() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchContainer}>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={() => { setLoading(true); void fetchCatalog(false); }}
+          placeholder="Tìm tên manga"
+          returnKeyType="search"
+        />
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" style={{ marginTop: 20 }} />
       ) : (
@@ -127,6 +166,9 @@ export default function PublicHome() {
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <Typography variant="body" style={{ textAlign: 'center', marginTop: 40 }}>
@@ -143,17 +185,28 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { 
     flexDirection: 'row', 
-    justifyContent: 'space-between', 
+    flexWrap: 'wrap',
     alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12
   },
+  titleBlock: { flexBasis: '100%', minWidth: 0 },
   loginBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 7,
+    borderWidth: 1,
+    flexBasis: '100%',
+    width: '100%',
+    paddingHorizontal: 10,
+    minHeight: 48,
+    borderRadius: 12,
   },
+  loginIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  loginCopy: { flex: 1, gap: 1 },
   voteBanner: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -175,6 +228,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
+  searchContainer: { paddingHorizontal: 16 },
   list: { padding: 16, gap: 16 },
   card: {
     flexDirection: 'row',

@@ -1,7 +1,25 @@
 import { apiClient } from './client';
 
+export type PublicationType = 'WEEKLY' | 'MONTHLY' | 'IRREGULAR';
+
+// reCAPTCHA verification is currently disabled by the backend, but both vote
+// endpoints still require this field in their request schema.
+export const DISABLED_RECAPTCHA_TOKEN = 'captcha-disabled';
+
+export interface VoteContextParams {
+  publicationType?: Extract<PublicationType, 'WEEKLY' | 'MONTHLY'>;
+}
+
+export interface VotePayload {
+  surveyPeriodId: string;
+  identity: string;
+  otpCode: string;
+  seriesIds: string[];
+  captchaToken: string;
+}
+
 export const publicApi = {
-  getCatalog: async (params?: { q?: string; genre?: string; demographic?: string; publicationType?: string; limit?: number; offset?: number }) => {
+  getCatalog: async (params?: { q?: string; genre?: string; demographic?: string; publicationType?: string; status?: string; limit?: number; offset?: number }) => {
     const res = await apiClient.get('/public/series', { params });
     return res.data?.data;
   },
@@ -13,16 +31,16 @@ export const publicApi = {
     const res = await apiClient.get(`/public/chapters/${chapterId}/pages`);
     return res.data?.data;
   },
-  getVoteContext: async () => {
-    const res = await apiClient.get('/vote/context');
+  getVoteContext: async (params?: VoteContextParams) => {
+    const res = await apiClient.get('/vote/context', { params });
     return res.data?.data;
   },
-  sendVoteOtp: async (identity: string, captchaToken: string) => {
+  sendVoteOtp: async (identity: string, captchaToken = DISABLED_RECAPTCHA_TOKEN) => {
     const res = await apiClient.post('/vote/otp', { identity, captchaToken });
     return res.data;
   },
-  submitVote: async (payload: { surveyPeriodId: string; identity: string; otpCode: string; seriesIds: string[]; captchaToken: string }) => {
-    const res = await apiClient.post('/vote', payload);
+  submitVote: async (payload: Omit<VotePayload, 'captchaToken'> & { captchaToken?: string }) => {
+    const res = await apiClient.post('/vote', { ...payload, captchaToken: payload.captchaToken || DISABLED_RECAPTCHA_TOKEN });
     return res.data;
   },
   getLatestRankingResults: async (params?: { publicationType?: string }) => {

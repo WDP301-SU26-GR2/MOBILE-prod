@@ -38,7 +38,7 @@ export default function VoteDoneScreen() {
         <Button
           title="Về Trang Chủ"
           onPress={() => router.push('/(public)')}
-          variant="outline"
+          variant="outlined"
           style={styles.button}
         />
       </View>
