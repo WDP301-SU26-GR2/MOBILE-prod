@@ -148,20 +148,11 @@ export default function VoteIndexScreen() {
               activeOpacity={0.7}
               onPress={() => !isDisabled && toggleSelection(series.id)}
             >
-              {series.coverImageUrl ? (
-                <Image
-                  source={{ uri: series.coverImageUrl }}
-                  style={styles.coverImage}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={[styles.coverImage, styles.noImageContainer, { backgroundColor: currentColors.background }]}>
-                  <Lock size={24} color={currentColors.textSecondary} />
-                  <Typography variant="caption" style={{ color: currentColors.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 4 }}>
-                    Đăng nhập để xem ảnh
-                  </Typography>
-                </View>
-              )}
+              <Image
+                source={{ uri: series.coverImageUrl || series.coverImage || series.coverUrl || `https://picsum.photos/seed/${series.id}/300/400` }}
+                style={styles.coverImage}
+                contentFit="cover"
+              />
               {isSelected && (
                 <View style={styles.selectedOverlay}>
                   <CheckCircle2 size={32} color={currentColors.primary} fill="#fff" />
