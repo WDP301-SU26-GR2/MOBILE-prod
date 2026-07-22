@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput as RNTextInput, TextInputProps as RNTextInputProps, StyleSheet } from 'react-native';
+import { View, TextInput as RNTextInput, TextInputProps as RNTextInputProps, StyleSheet, Platform } from 'react-native';
 import { useThemeStore } from '../store/useThemeStore';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -48,8 +48,8 @@ export const TextInput: React.FC<TextInputProps> = ({
             styles.input,
             {
               color: currentColors.text,
-              fontFamily: typography.fonts.body,
               fontSize: typography.sizes.body,
+              ...(Platform.OS === 'android' ? { fontFamily: typography.fonts.body } : {}),
             },
             style,
           ]}
