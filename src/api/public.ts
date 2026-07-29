@@ -45,7 +45,7 @@ export const publicApi = {
     const rest = await Promise.all(remainingOffsets.map((offset) => getCatalogPage({ ...params, limit: 50, offset })));
     return { ...first, items: [first, ...rest].flatMap((page) => page?.items ?? []) };
   },
-  getSeriesDetail: async (id: string) => {
+  getSeriesDetail: async (id: string): Promise<SeriesPublicDetail> => {
     const res = await apiClient.get(`/public/series/${id}`);
     return res.data?.data;
   },
@@ -96,15 +96,28 @@ export const publicApi = {
 export interface SeriesPublic {
   id: string;
   title: string;
-  coverImage?: string;
-  coverImageUrl?: string;
-  synopsis?: string;
+  coverImageUrl: string | null;
+  synopsis: string | null;
   genres: string[];
-  demographic?: string | null;
+  demographic: string | null;
   status: string;
-  magazine?: string | null;
-  publicationType?: string;
+  magazine: string | null;
+  publicationType: PublicationType | null;
+  author: {
+    displayName: string | null;
+  };
   publishedChapterCount: number;
+}
+
+export interface PublicChapter {
+  id: string;
+  chapterNumber: number;
+  title: string | null;
+  publishedAt: string;
+}
+
+export interface SeriesPublicDetail extends SeriesPublic {
+  chapters: PublicChapter[];
 }
 
 

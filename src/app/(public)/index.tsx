@@ -8,7 +8,7 @@ import { publicApi, SeriesPublic } from '../../api/public';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
-import { Trophy, ChevronRight, LogIn, PenLine } from 'lucide-react-native';
+import { Trophy, ChevronRight, LogIn, PenLine, UserRound } from 'lucide-react-native';
 import { ThemeToggle } from '../../components/ThemeToggle';
 
 export default function PublicHome() {
@@ -83,6 +83,14 @@ export default function PublicHome() {
       />
       <View style={styles.cardContent}>
         <Typography variant="h3" numberOfLines={1}>{item.title}</Typography>
+        {item.author?.displayName ? (
+          <View style={styles.authorRow}>
+            <UserRound size={14} color={currentColors.textSecondary} />
+            <Typography variant="caption" color={currentColors.textSecondary} numberOfLines={1} style={styles.authorName}>
+              Tác giả · {item.author.displayName}
+            </Typography>
+          </View>
+        ) : null}
         <Typography variant="body" color={currentColors.textSecondary} numberOfLines={1}>
           {item.magazine || 'Manga công khai'}
         </Typography>
@@ -261,6 +269,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cover: { width: 100, height: 140 },
-  cardContent: { flex: 1, padding: 12, justifyContent: 'center', gap: 4 }
+  cardContent: { flex: 1, padding: 12, justifyContent: 'center', gap: 4 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  authorName: { flex: 1 }
 });
 
