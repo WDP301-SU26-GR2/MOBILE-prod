@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
 import { mangakaApi } from '../../api/mangaka';
-import { Swipeable } from 'react-native-gesture-handler';
-import { Trash2, CheckCheck, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { Button } from '../../components/Button';
 
 export default function MangakaInbox() {
@@ -17,62 +16,54 @@ export default function MangakaInbox() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  React.useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
-      // Wait, there's no mangakaApi.getNotifications? Yes there is!
-      const data = await mangakaApi.getNotifications();
-      setNotifications(data?.items || data || []);
+      if (showLoading) setLoading(true);
+      const data = await mangakaApi.getAllNotifications();
+      setNotifications(data?.items || []);
+      setUnreadCount(data?.unreadCount ?? 0);
     } catch (error) {
       console.log('Error fetching notifications', error);
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleReadAll = async () => {
-    try {
-      await mangakaApi.readAllNotifications();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    } catch (e) {
-      console.log('Error reading all notifications', e);
-    }
-  };
+  useEffect(() => {
+    void fetchNotifications();
+    const timer = setInterval(() => void fetchNotifications(false), 20000);
+    return () => clearInterval(timer);
+  }, [fetchNotifications]);
 
-  const handleDelete = async (id: string) => {
-    // Optimistic local delete
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    try {
-      await mangakaApi.deleteNotification(id);
-    } catch (e) {
-      console.log('Delete failed on backend, continuing...', e);
-    }
-  };
-
-  const handleAction = async (item: any) => {
-    if (!item.isRead) {
-      try {
-        await mangakaApi.readNotification(item.id);
-        setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
-      } catch (e) {}
-    }
-
-    setSelectedNotification(item);
-  };
+  const handleAction = (item: any) => setSelectedNotification(item);
 
   const handleDeepLink = (item: any) => {
     setSelectedNotification(null);
-    if (item.type === 'CONTRACT') {
+    const referenceType = String(item.referenceType || item.type || '').toUpperCase();
+    if (referenceType.startsWith('CONTRACT')) {
       router.push(`/(mangaka-tabs)/series_stack/contract/${item.referenceId}`);
-    } else if (item.type === 'REVIEW') {
+    } else if (referenceType.startsWith('TASK') || referenceType.startsWith('REVIEW')) {
       router.push(`/(mangaka-tabs)/series_stack/review/${item.referenceId}`);
+    } else if (referenceType.startsWith('CHAPTER') || referenceType.startsWith('MANUSCRIPT')) {
+      router.push(`/(mangaka-tabs)/series_stack/chapter/${item.referenceId}`);
+    } else if (referenceType.startsWith('NAME')) {
+      router.push(`/(mangaka-tabs)/series_stack/${item.referenceId}`);
+    } else if (referenceType.startsWith('SERIES') || referenceType.startsWith('PROPOSAL')) {
+      router.push(`/(mangaka-tabs)/series_stack/${item.referenceId}`);
+    } else if (referenceType.startsWith('SURVEY') || referenceType.startsWith('RANKING')) {
+      router.push('/(mangaka-tabs)/ranking');
+    } else if (referenceType.includes('INVITE') || referenceType.includes('ASSIGNMENT') || referenceType.includes('COLLABORATION')) {
+      router.push('/(mangaka-tabs)/studio');
     }
+  };
+
+  const canDeepLink = (item: any) => {
+    if (!item?.referenceId) return false;
+    const type = String(item.referenceType || item.type || '').toUpperCase();
+    return ['CONTRACT', 'TASK', 'REVIEW', 'CHAPTER', 'MANUSCRIPT', 'NAME', 'SERIES', 'PROPOSAL', 'SURVEY', 'RANKING', 'INVITE', 'ASSIGNMENT', 'COLLABORATION'].some((prefix) => type.includes(prefix));
   };
 
   const getNotificationTitle = (type: string) => {
@@ -90,16 +81,6 @@ export default function MangakaInbox() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <Swipeable
-      renderRightActions={() => (
-        <TouchableOpacity 
-          style={styles.deleteAction} 
-          onPress={() => handleDelete(item.id)}
-        >
-          <Trash2 color="#FFF" size={24} />
-        </TouchableOpacity>
-      )}
-    >
       <TouchableOpacity 
         style={[
           styles.card, 
@@ -114,7 +95,6 @@ export default function MangakaInbox() {
         </View>
         {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: currentColors.primary }]} />}
       </TouchableOpacity>
-    </Swipeable>
   );
 
   return (
@@ -122,17 +102,14 @@ export default function MangakaInbox() {
       <View style={styles.content}>
         <View style={styles.header}>
           <Typography variant="h1">Thông báo</Typography>
-          <TouchableOpacity onPress={handleReadAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <CheckCheck size={18} color={currentColors.primary} />
-            <Typography variant="bodyBold" color={currentColors.primary}>Đọc tất cả</Typography>
-          </TouchableOpacity>
+          <Typography variant="caption" color={unreadCount > 0 ? currentColors.primary : currentColors.textSecondary}>{unreadCount} chưa đọc · tự cập nhật</Typography>
         </View>
         <FlatList
           data={notifications}
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={
+          ListEmptyComponent={loading ? <ActivityIndicator color={currentColors.primary} style={{ marginTop: 32 }} /> :
             <Typography style={{ textAlign: 'center', marginTop: 24 }} color={currentColors.textSecondary}>
               Không có thông báo nào.
             </Typography>
@@ -168,7 +145,7 @@ export default function MangakaInbox() {
               )}
             </View>
             <View style={[styles.modalFooter, { borderTopColor: currentColors.border }]}>
-              {selectedNotification && (selectedNotification.type === 'CONTRACT' || selectedNotification.type === 'REVIEW') && (
+              {selectedNotification && canDeepLink(selectedNotification) && (
                 <Button 
                   title="Đi tới chi tiết" 
                   onPress={() => handleDeepLink(selectedNotification)} 

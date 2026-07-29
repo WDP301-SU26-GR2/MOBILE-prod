@@ -12,6 +12,7 @@ export default function VerifyScreen() {
   const [code, setCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { theme } = useThemeStore();
@@ -48,6 +49,19 @@ export default function VerifyScreen() {
     }
   };
 
+  const resendOtp = async () => {
+    if (!email) return Alert.alert('Thiếu email', 'Hãy quay lại bước đăng ký để nhận mã xác thực.');
+    try {
+      setResending(true);
+      await authApi.sendOtpEmail({ email, purpose: 'REGISTER' });
+      Alert.alert('Đã gửi mã', 'Vui lòng kiểm tra email và thư mục Spam.');
+    } catch (error: any) {
+      Alert.alert('Không thể gửi lại mã', error.response?.data?.message || 'Vui lòng thử lại sau.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
@@ -73,6 +87,7 @@ export default function VerifyScreen() {
         />
         
         <Button title="Xác Thực" onPress={() => handleVerify(code)} loading={loading} style={styles.button} />
+        <Button title="Gửi lại mã OTP" variant="outline" onPress={() => void resendOtp()} loading={resending} />
         
         <Typography variant="caption" color={currentColors.textSecondary} style={{ textAlign: 'center', marginTop: 16 }}>
           Vui lòng kiểm tra hộp thư đến và hòm thư Spam để nhận mã OTP.

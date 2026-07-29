@@ -23,6 +23,7 @@ export default function ChapterReaderScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
+  const lastSignedUrlRefreshRef = useRef(0);
 
   const fetchChapter = useCallback(async () => {
     try {
@@ -48,6 +49,12 @@ export default function ChapterReaderScreen() {
 
   const toggleOverlay = () => setOverlayVisible(!overlayVisible);
   const toggleReadMode = () => setReadMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical');
+  const refreshExpiredImages = () => {
+    const now = Date.now();
+    if (now - lastSignedUrlRefreshRef.current < 10000) return;
+    lastSignedUrlRefreshRef.current = now;
+    void fetchChapter();
+  };
 
   const handleNextChapter = () => {
     if (data?.nextChapterId) {
@@ -121,6 +128,7 @@ export default function ChapterReaderScreen() {
             height: isHorizontal ? SCREEN_HEIGHT : (SCREEN_WIDTH * 1.5),
             backgroundColor: '#000',
           }}
+          onError={refreshExpiredImages}
         />
       </Pressable>
     );

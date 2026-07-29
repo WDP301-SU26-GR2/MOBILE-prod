@@ -5,11 +5,12 @@ import { Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-f
 import { HankenGrotesk_700Bold } from '@expo-google-fonts/hanken-grotesk';
 import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../theme/colors';
+import { authApi } from '../api/auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,14 +23,23 @@ export default function RootLayout() {
     JetBrainsMono_400Regular,
   });
 
-  const { hydrate, isLoading, accessToken, user } = useAuthStore();
+  const { hydrate, isLoading, accessToken, user, setUser } = useAuthStore();
   const { theme } = useThemeStore();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
     hydrate();
-  }, []);
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (isLoading || !accessToken) return;
+    void authApi.getMe().then((response) => {
+      if (response?.data) void setUser({ ...useAuthStore.getState().user, ...response.data });
+    }).catch(() => {
+      // The interceptor owns token refresh/logout; keep root navigation stable.
+    });
+  }, [accessToken, isLoading, setUser]);
 
   useEffect(() => {
     if (fontError) throw fontError;
@@ -56,15 +66,18 @@ export default function RootLayout() {
         setTimeout(() => router.replace('/(auth)/login'), 0);
       }
     } else {
-      // Logged in: must be in their respective tabs. If at root, public, or auth, go to tabs
-      if (isRoot || inAuthGroup || inPublicGroup) {
-        setTimeout(() => {
-          if (user?.role === 'ASSISTANT') {
-            router.replace('/(assistant-tabs)');
-          } else {
-            router.replace('/(mangaka-tabs)');
-          }
-        }, 0);
+      const roleCode = typeof user?.role === 'string' ? user.role : user?.role?.code;
+      if (user?.mustChangePassword && !(inAuthGroup && (segments[1] as string) === 'change-password')) {
+        setTimeout(() => router.replace('/(auth)/change-password' as any), 0);
+        return;
+      }
+      if (roleCode !== 'ASSISTANT' && roleCode !== 'MANGAKA') {
+        if (!(inAuthGroup && (segments[1] as string) === 'web-only')) setTimeout(() => router.replace('/(auth)/web-only' as any), 0);
+        return;
+      }
+      const expectedGroup = roleCode === 'ASSISTANT' ? '(assistant-tabs)' : '(mangaka-tabs)';
+      if (segments[0] !== expectedGroup) {
+        setTimeout(() => router.replace(roleCode === 'ASSISTANT' ? '/(assistant-tabs)' : '/(mangaka-tabs)'), 0);
       }
     }
   }, [accessToken, user, segments, isLoading, fontsLoaded, fontError, router]);
@@ -77,6 +90,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: currentColors.background }}>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: currentColors.background } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(public)" />

@@ -1,79 +1,53 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert, Modal } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../components/Typography';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/Button';
-import { mangakaApi } from '../../api/mangaka';
-import { Swipeable } from 'react-native-gesture-handler';
-import { Trash2, CheckCheck, X } from 'lucide-react-native';
+import { assistantReadApi } from '../../api/assistant';
+import { X } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function AssistantInbox() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const router = useRouter();
 
-  React.useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
-      const data = await mangakaApi.getNotifications();
-      setNotifications(data?.items || data || []);
+      if (showLoading) setLoading(true);
+      const data = await assistantReadApi.getAllNotifications();
+      setNotifications(data?.items || []);
+      setUnreadCount(data?.unreadCount ?? 0);
     } catch (error) {
       console.log('Error fetching notifications', error);
       setNotifications([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleReadAll = async () => {
-    try {
-      await mangakaApi.readAllNotifications();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    } catch (e) {
-      console.log('Error reading all notifications', e);
+  const handleAction = (item: any) => {
+    const referenceType = String(item.referenceType || item.entityType || item.type || '').toUpperCase();
+    const referenceId = item.referenceId || item.entityId;
+    if (referenceType.startsWith('TASK') && referenceId) {
+      router.push(`/(assistant-tabs)/task_stack/${referenceId}` as any);
+      return;
     }
-  };
-
-  const handleDelete = async (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    try {
-      await mangakaApi.deleteNotification(id);
-    } catch (e) {
-      console.log('Delete failed on backend, continuing...', e);
+    if ((referenceType.includes('INVITE') || referenceType.includes('ASSIGNMENT') || referenceType.includes('COLLABORATION')) && referenceId) {
+      router.push('/(assistant-tabs)/studio');
+      return;
     }
-  };
-
-  const handleAction = async (item: any) => {
-    if (!item.isRead) {
-      try {
-        await mangakaApi.readNotification(item.id);
-        setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
-      } catch (e) {}
-    }
-
     setSelectedNotification(item);
   };
 
-  const handleDeepLink = (item: any) => {
-    setSelectedNotification(null);
-    if (item.type === 'INVITE') {
-      Alert.alert(
-        'Lời mời cộng tác', 
-        'Bạn có muốn đồng ý lời mời này không?',
-        [
-          { text: 'Từ chối', style: 'cancel' },
-          { text: 'Đồng ý', onPress: () => console.log('Accepted') }
-        ]
-      );
-    } else if (item.type === 'TASK') {
-      // Implement task route
-    }
-  };
+  useEffect(() => {
+    void fetchNotifications();
+    const timer = setInterval(() => void fetchNotifications(false), 20000);
+    return () => clearInterval(timer);
+  }, [fetchNotifications]);
 
   const getNotificationTitle = (type: string) => {
     switch (type) {
@@ -90,16 +64,6 @@ export default function AssistantInbox() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <Swipeable
-      renderRightActions={() => (
-        <TouchableOpacity 
-          style={styles.deleteAction} 
-          onPress={() => handleDelete(item.id)}
-        >
-          <Trash2 color="#FFF" size={24} />
-        </TouchableOpacity>
-      )}
-    >
       <TouchableOpacity 
         style={[styles.card, !item.isRead && styles.unreadCard]}
         onPress={() => handleAction(item)}
@@ -110,24 +74,21 @@ export default function AssistantInbox() {
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
       </TouchableOpacity>
-    </Swipeable>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h1">Hộp thư</Typography>
-        <TouchableOpacity onPress={handleReadAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <CheckCheck size={18} color={colors.primary} />
-          <Typography variant="bodyBold" color={colors.primary}>Đọc tất cả</Typography>
-        </TouchableOpacity>
+        <Typography variant="caption" color={colors.textSecondary}>Chỉ xem trên mobile</Typography>
+        <Typography variant="caption" color={unreadCount > 0 ? colors.primary : colors.textSecondary}>{unreadCount} chưa đọc · tự cập nhật</Typography>
       </View>
       <FlatList
         data={notifications}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={
+        ListEmptyComponent={loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} /> :
           <Typography align="center" color={colors.textSecondary}>
             Không có thông báo nào.
           </Typography>
@@ -162,13 +123,9 @@ export default function AssistantInbox() {
               )}
             </View>
             <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-              {selectedNotification && (selectedNotification.type === 'INVITE' || selectedNotification.type === 'TASK') && (
-                <Button 
-                  title="Đi tới chi tiết" 
-                  onPress={() => handleDeepLink(selectedNotification)} 
-                  style={{ marginBottom: 12 }}
-                />
-              )}
+              <Typography variant="caption" color={colors.textSecondary} style={{ marginBottom: 12 }}>
+                Thông báo được giữ ở chế độ chỉ xem trên mobile.
+              </Typography>
               <Button 
                 title="Đóng" 
                 variant="outline" 
@@ -194,14 +151,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center'
-  },
-  deleteAction: {
-    backgroundColor: colors.error,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    borderRadius: 8,
-    marginBottom: 0
   },
   unreadCard: {
     backgroundColor: '#F5F9FF',

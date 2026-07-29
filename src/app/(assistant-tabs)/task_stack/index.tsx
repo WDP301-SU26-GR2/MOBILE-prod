@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import { Typography } from '../../../components/Typography';
-import { mangakaApi } from '../../../api/mangaka';
+import { assistantReadApi } from '../../../api/assistant';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { colors } from '../../../theme/colors';
 
@@ -31,7 +30,7 @@ export default function TaskListScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
-      const res = await mangakaApi.getTasks({ limit: 50, offset: 0 });
+      const res = await assistantReadApi.getAllTasks();
       setTasks(res?.items || []);
     } catch (e) {
       console.error(e);
@@ -58,9 +57,9 @@ export default function TaskListScreen() {
   const filteredTasks = tasks.filter(t => activeTab === 'ALL' || t.status === activeTab);
 
   const renderItem = ({ item }: { item: any }) => {
-    const deadlineDate = new Date(item.deadline);
-    const daysLeft = Math.floor((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    const deadlineColor = daysLeft < 2 ? currentColors.error : daysLeft < 5 ? currentColors.warning : currentColors.textSecondary;
+    const deadlineDate = item.deadline ? new Date(item.deadline) : null;
+    const daysLeft = deadlineDate ? Math.floor((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+    const deadlineColor = daysLeft != null && daysLeft < 2 ? currentColors.error : daysLeft != null && daysLeft < 5 ? currentColors.warning : currentColors.textSecondary;
 
     return (
       <TouchableOpacity 
@@ -77,7 +76,7 @@ export default function TaskListScreen() {
           Loại: {item.taskType} | Trang {item.page?.pageNumber}
         </Typography>
         <Typography variant="caption" style={{ color: deadlineColor }}>
-          Hạn chót: {deadlineDate.toLocaleDateString('vi-VN')}
+          Hạn chót: {deadlineDate ? deadlineDate.toLocaleDateString('vi-VN') : 'Chưa đặt'}
         </Typography>
       </TouchableOpacity>
     );
@@ -86,6 +85,9 @@ export default function TaskListScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.tabsContainer}>
+        <TouchableOpacity onPress={() => router.push('/(assistant-tabs)/task_stack/revisions' as any)} style={[styles.revisionButton, { borderColor: currentColors.border }]}>
+          <Typography variant="caption" color={currentColors.primary}>Yêu cầu sửa</Typography>
+        </TouchableOpacity>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {TABS.map(tab => (
             <TouchableOpacity 
@@ -129,7 +131,8 @@ export default function TaskListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  tabsContainer: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row' },
+  tabsContainer: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  revisionButton: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 7 },
   tabPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   listContent: { padding: 16, paddingBottom: 80 },
   taskCard: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12 },

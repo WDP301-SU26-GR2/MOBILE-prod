@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Trophy, ChevronRight, LogIn, PenLine } from 'lucide-react-native';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 export default function PublicHome() {
   const router = useRouter();
@@ -22,24 +23,28 @@ export default function PublicHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [type, setType] = useState<string>(''); // empty means ALL
 
-  const [voteContext, setVoteContext] = useState<any>(null);
+  const [openVotePeriods, setOpenVotePeriods] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCatalog = async (append = false) => {
     const nextOffset = append ? offset : 0;
     try {
       if (append) setLoadingMore(true);
-      const [catalogData, voteData] = await Promise.all([
+      setError(null);
+      const [catalogData, openPeriodsData] = await Promise.all([
         publicApi.getCatalog({ publicationType: type || undefined, q: searchQuery || undefined, limit: 20, offset: nextOffset }),
-        publicApi.getVoteContext()
+        publicApi.getOpenVotePeriods()
       ]);
       const items = catalogData?.items || [];
       setSeries(current => append ? [...current, ...items] : items);
       setOffset(nextOffset + items.length);
       setHasMore(nextOffset + items.length < (catalogData?.total ?? 0));
-      setVoteContext(voteData);
+      setOpenVotePeriods(openPeriodsData?.items ?? []);
     } catch (e) {
       console.log('Fetch catalog error', e);
+      setHasMore(false);
+      setError('Không thể tải danh mục. Kiểm tra kết nối và thử lại.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,7 +68,7 @@ export default function PublicHome() {
   };
 
   const loadMore = () => {
-    if (!loading && !loadingMore && hasMore) void fetchCatalog(true);
+    if (!error && !loading && !loadingMore && hasMore) void fetchCatalog(true);
   };
 
   const renderItem = ({ item }: { item: SeriesPublic }) => (
@@ -79,10 +84,10 @@ export default function PublicHome() {
       <View style={styles.cardContent}>
         <Typography variant="h3" numberOfLines={1}>{item.title}</Typography>
         <Typography variant="body" color={currentColors.textSecondary} numberOfLines={1}>
-          {item.mangakaName}
+          {item.magazine || 'Manga công khai'}
         </Typography>
         <Typography variant="caption" color={currentColors.primary}>
-          {item.publicationType} • CHƯƠNG MỚI: {item.latestChapterNumber || 0}
+           {item.publicationType || 'Chưa phân loại'} • {item.publishedChapterCount > 0 ? `${item.publishedChapterCount} chương` : 'Sắp ra mắt'}
         </Typography>
       </View>
     </TouchableOpacity>
@@ -91,9 +96,12 @@ export default function PublicHome() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.header}>
-        <View style={styles.titleBlock}>
-          <Typography variant="h2" numberOfLines={1}>Danh mục Manga</Typography>
-          <Typography variant="label" color={currentColors.textSecondary} numberOfLines={1}>Đọc truyện • Bình chọn</Typography>
+        <View style={styles.titleRow}>
+          <View style={styles.titleBlock}>
+            <Typography variant="h2" numberOfLines={1}>Danh mục Manga</Typography>
+            <Typography variant="label" color={currentColors.textSecondary} numberOfLines={1}>Đọc truyện • Bình chọn</Typography>
+          </View>
+          <ThemeToggle />
         </View>
         <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={[styles.loginBtn, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
           <View style={[styles.loginIcon, { backgroundColor: `${currentColors.primary}18` }]}>
@@ -108,7 +116,7 @@ export default function PublicHome() {
       </View>
 
       {/* Vote Banner */}
-      {voteContext?.period && (
+      {openVotePeriods.length > 0 && (
         <TouchableOpacity 
           style={[styles.voteBanner, { backgroundColor: currentColors.surface, borderColor: currentColors.border, borderWidth: 1 }]}
           onPress={() => router.push('/(public)/vote')}
@@ -117,7 +125,7 @@ export default function PublicHome() {
             <Trophy color={currentColors.primary} size={24} />
           </View>
           <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold" color={currentColors.text}>Kỳ bình chọn #{voteContext.period.number} đang mở!</Typography>
+            <Typography variant="bodyBold" color={currentColors.text}>Có {openVotePeriods.length} kỳ bình chọn đang mở</Typography>
             <Typography variant="caption" color={currentColors.textSecondary}>Nhấn để bình chọn series yêu thích của bạn</Typography>
           </View>
           <ChevronRight color={currentColors.textSecondary} size={20} />
@@ -133,7 +141,7 @@ export default function PublicHome() {
           >
             <Typography 
               variant="caption" 
-              color={type === filterType ? '#FFF' : currentColors.text}
+              color={type === filterType ? currentColors.primaryForeground : currentColors.text}
             >
               {filterType === '' ? 'TẤT CẢ' : filterType === 'WEEKLY' ? 'HÀNG TUẦN' : filterType === 'MONTHLY' ? 'HÀNG THÁNG' : 'KHÔNG ĐỊNH KỲ'}
             </Typography>
@@ -143,8 +151,8 @@ export default function PublicHome() {
             style={[styles.filterChip, { backgroundColor: currentColors.warning, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
             onPress={() => router.push('/(public)/ranking')}
           >
-            <Trophy size={14} color="#FFF" />
-            <Typography variant="caption" color="#FFF">XẾP HẠNG</Typography>
+            <Trophy size={14} color={currentColors.warningForeground} />
+            <Typography variant="caption" color={currentColors.warningForeground}>XẾP HẠNG</Typography>
         </TouchableOpacity>
       </View>
 
@@ -171,9 +179,18 @@ export default function PublicHome() {
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
-            <Typography variant="body" style={{ textAlign: 'center', marginTop: 40 }}>
-              Không có truyện nào.
-            </Typography>
+            error ? (
+              <View style={styles.errorState}>
+                <Typography variant="body" color={currentColors.textSecondary} align="center">{error}</Typography>
+                <TouchableOpacity onPress={() => { setLoading(true); void fetchCatalog(false); }} style={[styles.retryButton, { backgroundColor: currentColors.primary }]}>
+                  <Typography variant="bodyBold" color={currentColors.primaryForeground}>Thử lại</Typography>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Typography variant="body" style={{ textAlign: 'center', marginTop: 40 }}>
+                Không có truyện nào.
+              </Typography>
+            )
           }
         />
       )}
@@ -192,7 +209,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12
   },
-  titleBlock: { flexBasis: '100%', minWidth: 0 },
+  titleRow: { flexBasis: '100%', width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleBlock: { flex: 1, minWidth: 0 },
   loginBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,6 +247,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   searchContainer: { paddingHorizontal: 16 },
+  errorState: { alignItems: 'center', gap: 12, marginTop: 40, paddingHorizontal: 24 },
+  retryButton: { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
   list: { padding: 16, gap: 16 },
   card: {
     flexDirection: 'row',

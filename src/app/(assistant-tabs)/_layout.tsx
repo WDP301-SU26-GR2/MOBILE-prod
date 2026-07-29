@@ -1,13 +1,11 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 import { Home, Users, CheckSquare, Bell, UserCircle } from 'lucide-react-native';
-import { TouchableOpacity } from 'react-native';
 
 export default function AssistantTabsLayout() {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
-  const router = useRouter();
 
   return (
     <Tabs screenOptions={{

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Typography } from '../../components/Typography';
-import { Button } from '../../components/Button';
-import { mangakaApi } from '../../api/mangaka';
+import { assistantReadApi } from '../../api/assistant';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 
@@ -17,62 +16,50 @@ export default function StudioScreen() {
   const theme = useThemeStore((state) => state.theme);
   const currentColors = colors[theme];
 
-  const fetchInvites = async () => {
+  const fetchInvites = useCallback(async () => {
     try {
-      const res = await mangakaApi.getCollaborationInvites();
+      const res = await assistantReadApi.getAllCollaborationInvites();
       setInvites(res?.items || []);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const fetchCollabs = async () => {
+  const fetchCollabs = useCallback(async () => {
     try {
-      const res = await mangakaApi.getStudioAssignments();
+      const res = await assistantReadApi.getAllStudioAssignments();
       setCollabs(res?.items || []);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchInvites(), fetchCollabs()]);
     setLoading(false);
-  };
+  }, [fetchInvites, fetchCollabs]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
-  const handleAcceptInvite = async (id: string) => {
+  const showInviteDetail = async (item: any) => {
     try {
-      await mangakaApi.acceptInvite(id);
-      Alert.alert('Thành công', 'Đã chấp nhận lời mời!');
-      fetchData();
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Lỗi', 'Không thể chấp nhận lời mời');
-    }
+      const detail = await assistantReadApi.getCollaborationInvite(item.id);
+      Alert.alert('Chi tiết lời mời', [detail?.series?.title || item.series?.title, detail?.taskTypes?.join(', '), detail?.note || detail?.message].filter(Boolean).join('\n'));
+    } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
-  const handleDeclineInvite = (id: string) => {
-    Alert.alert('Xác nhận', 'Bạn có chắc chắn muốn từ chối lời mời này?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Từ chối', style: 'destructive', onPress: async () => {
-        try {
-          await mangakaApi.declineInvite(id);
-          fetchData();
-        } catch (e) {
-          console.error(e);
-          Alert.alert('Lỗi', 'Không thể từ chối lời mời');
-        }
-      }}
-    ]);
+  const showAssignmentDetail = async (item: any) => {
+    try {
+      const detail = await assistantReadApi.getStudioAssignment(item.id);
+      Alert.alert('Chi tiết cộng tác', [detail?.series?.title || item.series?.title, detail?.status, detail?.assignedTaskTypes?.join(', ')].filter(Boolean).join('\n'));
+    } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
   const renderInviteItem = ({ item }: { item: any }) => (
-    <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+    <TouchableOpacity onPress={() => void showInviteDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
       <View style={styles.row}>
         <Image source={{ uri: item.mangaka?.avatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -91,19 +78,20 @@ export default function StudioScreen() {
       </View>
       
       {item.status === 'PENDING' && (
-        <View style={styles.actionRow}>
-          <Button title="Từ chối" variant="outline" onPress={() => handleDeclineInvite(item.id)} style={{ flex: 1, marginRight: 8 }} />
-          <Button title="Chấp nhận" onPress={() => handleAcceptInvite(item.id)} style={{ flex: 1 }} />
+        <View style={[styles.readOnlyNotice, { backgroundColor: currentColors.background, borderColor: currentColors.border }]}>
+          <Typography variant="caption" style={{ color: currentColors.textSecondary }}>
+            Lời mời chỉ hiển thị trên mobile. Hãy dùng bản web để phản hồi.
+          </Typography>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   const renderCollabItem = ({ item }: { item: any }) => {
     const isExpired = new Date() > new Date(item.hireEnd);
     
     return (
-      <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+      <TouchableOpacity onPress={() => void showAssignmentDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
         <View style={styles.row}>
           <Image source={{ uri: item.mangaka?.avatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -124,7 +112,7 @@ export default function StudioScreen() {
             Hợp đồng: {new Date(item.hireStart).toLocaleDateString('vi-VN')} - {new Date(item.hireEnd).toLocaleDateString('vi-VN')}
           </Typography>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -176,5 +164,5 @@ const styles = StyleSheet.create({
   card: { padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eee' },
-  actionRow: { flexDirection: 'row', marginTop: 16 }
+  readOnlyNotice: { marginTop: 16, padding: 10, borderWidth: 1, borderRadius: 8 }
 });

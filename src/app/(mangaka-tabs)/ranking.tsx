@@ -32,7 +32,7 @@ export default function RankingMangaka() {
   const fetchSeries = async () => {
     try {
       setLoading(true);
-      const data = await mangakaApi.getMySeries();
+      const data = await mangakaApi.getAllMySeries();
       const items = data?.items || [];
       setSeriesList(items);
       if (items.length > 0) {

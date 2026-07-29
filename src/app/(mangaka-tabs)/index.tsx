@@ -5,13 +5,11 @@ import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
 import { mangakaApi } from '../../api/mangaka';
 import { colors } from '../../theme/colors';
-import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { AlertTriangle, Clock, BookOpen, CheckSquare, Settings, UserCircle } from 'lucide-react-native';
+import { AlertTriangle, Clock, BookOpen, CheckSquare, Settings } from 'lucide-react-native';
 
 export default function MangakaHome() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
   const [loading, setLoading] = useState(true);
@@ -20,8 +18,8 @@ export default function MangakaHome() {
 
   const fetchDashboard = async () => {
     try {
-      const dashData = await mangakaApi.getMangakaDashboard();
-      setData(dashData);
+      const [dashData, overview] = await Promise.all([mangakaApi.getMangakaDashboard(), mangakaApi.getOverview()]);
+      setData({ ...dashData, overview });
     } catch (e) {
       console.log('Error fetching overview', e);
       setData(null);
@@ -102,8 +100,13 @@ export default function MangakaHome() {
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/deadline')}>
-          <Clock color={currentColors.secondary} size={24} style={{ marginBottom: 8 }} />
+          <Clock color={currentColors.textSecondary} size={24} style={{ marginBottom: 8 }} />
           <Typography variant="caption" color={currentColors.textSecondary}>Thương lượng Deadline</Typography>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/insights' as any)}>
+          <Settings color={currentColors.primary} size={24} style={{ marginBottom: 8 }} />
+          <Typography variant="caption" color={currentColors.textSecondary}>Hồ sơ & lưu trữ</Typography>
         </TouchableOpacity>
       </View>
 
@@ -121,6 +124,7 @@ export default function MangakaHome() {
           </View>
         );
       })()}
+      {data?.overview && <View style={styles.section}><Typography variant="caption" color={currentColors.textSecondary}>Studio overview · {data.overview.items?.length ?? 0} mục đang hoạt động</Typography></View>}
       </ScrollView>
     </SafeAreaView>
   );

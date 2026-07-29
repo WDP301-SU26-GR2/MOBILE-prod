@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
@@ -6,7 +6,7 @@ import { TextInput } from '../../components/TextInput';
 import { Button } from '../../components/Button';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Mail, Lock, BookOpen } from 'lucide-react-native';
+import { Mail, Lock, BookOpen, ChevronLeft } from 'lucide-react-native';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 import * as WebBrowser from 'expo-web-browser';
@@ -33,14 +33,17 @@ export default function LoginScreen() {
       setLoading(true);
       const res = await authApi.login({ email, password });
       if (res.success && res.data) {
-        const userRole = res.data.user.role;
-        await setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
+        const userRole = typeof res.data.user.role === 'string' ? res.data.user.role : res.data.user.role?.code;
+        const sessionUser = { ...res.data.user, mustChangePassword: res.data.mustChangePassword };
         if (userRole === 'ASSISTANT') {
-          router.replace('/(assistant-tabs)');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace((res.data.mustChangePassword ? '/(auth)/change-password' : '/(assistant-tabs)') as any);
         } else if (userRole === 'MANGAKA') {
-          router.replace('/(mangaka-tabs)');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace((res.data.mustChangePassword ? '/(auth)/change-password' : '/(mangaka-tabs)') as any);
         } else {
-          Alert.alert('Chưa hỗ trợ', 'Vui lòng dùng bản web cho vai trò của bạn.');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace('/(auth)/web-only' as any);
         }
       }
     } catch (error: any) {
@@ -60,34 +63,28 @@ export default function LoginScreen() {
     }
   };
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '354884405038-6dj70vo6jeifdeq3h7s0f0eps5lj19v0.apps.googleusercontent.com',
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '354884405038-6dj70vo6jeifdeq3h7s0f0eps5lj19v0.apps.googleusercontent.com',
   });
 
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        handleGoogleSuccess(authentication.accessToken);
-      }
-    }
-  }, [response]);
-
-  const handleGoogleSuccess = async (token: string) => {
+  const handleGoogleSuccess = useCallback(async (token: string) => {
     try {
       setLoading(true);
       // Giả lập xử lý token hoặc gửi về BE
       const res = await authApi.loginWithGoogle({ idToken: token });
       if (res.success && res.data) {
-        const userRole = res.data.user.role;
-        await setAuth(res.data.accessToken, res.data.refreshToken, res.data.user);
+        const userRole = typeof res.data.user.role === 'string' ? res.data.user.role : res.data.user.role?.code;
+        const sessionUser = { ...res.data.user, mustChangePassword: res.data.mustChangePassword };
         if (userRole === 'ASSISTANT') {
-          router.replace('/(assistant-tabs)');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace((res.data.mustChangePassword ? '/(auth)/change-password' : '/(assistant-tabs)') as any);
         } else if (userRole === 'MANGAKA') {
-          router.replace('/(mangaka-tabs)');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace((res.data.mustChangePassword ? '/(auth)/change-password' : '/(mangaka-tabs)') as any);
         } else {
-          Alert.alert('Chưa hỗ trợ', 'Vui lòng dùng bản web cho vai trò của bạn.');
+          await setAuth(res.data.accessToken, res.data.refreshToken, sessionUser);
+          router.replace('/(auth)/web-only' as any);
         }
       }
     } catch (error: any) {
@@ -96,7 +93,18 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, setAuth]);
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const idToken = response.params?.id_token;
+      if (idToken) {
+        void handleGoogleSuccess(idToken);
+      } else {
+        Alert.alert('Không thể đăng nhập Google', 'Google không trả về ID token. Vui lòng thử lại.');
+      }
+    }
+  }, [response, handleGoogleSuccess]);
 
   const handleGoogleLogin = async () => {
     promptAsync();
@@ -107,6 +115,18 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
       style={[styles.container, { backgroundColor: currentColors.background }]}
     >
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Quay về trang dành cho khách"
+        onPress={() => router.replace('/(public)')}
+        style={styles.backButton}
+      >
+        <ChevronLeft size={20} color={currentColors.primary} />
+        <Typography variant="bodyMedium" color={currentColors.primary}>
+          Về trang đọc truyện
+        </Typography>
+      </TouchableOpacity>
+
       <View style={styles.header}>
         <Typography variant="h1" font="headline" style={styles.title}>Chào Mừng Trở Lại</Typography>
         <Typography variant="body" color={currentColors.textSecondary}>Đăng nhập vào tài khoản của bạn để tiếp tục</Typography>
@@ -177,7 +197,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24 },
-  header: { marginTop: 60, marginBottom: 40 },
+  backButton: { marginTop: 24, flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  header: { marginTop: 32, marginBottom: 40 },
   title: { marginBottom: 8 },
   form: { flex: 1 },
   forgotPassword: { alignSelf: 'flex-end', marginBottom: 24 },

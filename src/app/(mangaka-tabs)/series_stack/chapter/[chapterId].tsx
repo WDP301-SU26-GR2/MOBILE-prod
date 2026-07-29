@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Typography } from '../../../../components/Typography';
-import { Button } from '../../../../components/Button';
 import { useThemeStore } from '../../../../store/useThemeStore';
 import { mangakaApi } from '../../../../api/mangaka';
 import { colors } from '../../../../theme/colors';
-import { ChevronLeft, Edit3, Image as ImageIcon, CheckCircle, MessageSquare } from 'lucide-react-native';
+import { ChevronLeft, Edit3, Image as ImageIcon, MessageSquare } from 'lucide-react-native';
 
 export default function ChapterDetail() {
   const { chapterId } = useLocalSearchParams();
@@ -15,13 +14,10 @@ export default function ChapterDetail() {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
   const [chapter, setChapter] = useState<any>(null);
+  const [production, setProduction] = useState<any>({ stages: [], pages: [] });
   const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    fetchChapter();
-  }, [chapterId]);
-
-  const fetchChapter = async () => {
+  const fetchChapter = useCallback(async () => {
     try {
       setLoading(true);
       const data = await mangakaApi.getChapterDetail(chapterId as string);
@@ -33,6 +29,22 @@ export default function ChapterDetail() {
           console.log('Error calculating progress', progressError);
           setChapter(data);
         }
+        try {
+          const stagesResult = await mangakaApi.getProductionStages(chapterId as string);
+          const stages = stagesResult?.stages ?? [];
+          const pagesResult = stages[0]?.id ? await mangakaApi.getStagePages(chapterId as string, stages[0].id) : [];
+          const pages = pagesResult?.items ?? pagesResult ?? [];
+          const firstPage = pages[0];
+          const firstPageId = firstPage?.pageId;
+          if (firstPageId) {
+            const [regions, jobs, annotations] = await Promise.all([
+              mangakaApi.getPageRegions(firstPageId), mangakaApi.getPageAiJobs(firstPageId), mangakaApi.getAllAnnotations({ targetType: 'PAGE', targetId: firstPageId }),
+            ]);
+            const firstJob = (jobs?.items ?? jobs ?? [])[0];
+            if (firstJob?.id) await mangakaApi.getAiJob(firstJob.id);
+            setProduction({ stages, pages, regions: regions?.items ?? regions ?? [], jobs: jobs?.items ?? jobs ?? [], annotations: annotations?.items ?? annotations ?? [] });
+          } else setProduction({ stages, pages });
+        } catch { setProduction({ stages: [], pages: [] }); }
       } else {
         throw new Error('Data is empty');
       }
@@ -43,7 +55,11 @@ export default function ChapterDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [chapterId]);
+
+  React.useEffect(() => {
+    void fetchChapter();
+  }, [fetchChapter]);
 
   if (loading) {
     return (
@@ -106,6 +122,11 @@ export default function ChapterDetail() {
         )}
 
         <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Quy trình làm việc</Typography>
+        {production.stages?.length > 0 && <View style={[styles.productionCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+          <Typography variant="bodyBold">Production stages</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>{production.stages.map((stage: any) => stage.name || stage.code || stage.status).filter(Boolean).join(' · ')}</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>{production.pages?.length ?? 0} trang · {production.regions?.length ?? 0} vùng · {production.jobs?.length ?? 0} AI job · {production.annotations?.length ?? 0} ghi chú</Typography>
+        </View>}
         
         <TouchableOpacity 
           style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
@@ -138,9 +159,9 @@ export default function ChapterDetail() {
 
         <TouchableOpacity 
           style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
-          onPress={() => router.push({ pathname: '/(mangaka-tabs)/deadline' })}
+          onPress={() => router.push({ pathname: '/(mangaka-tabs)/deadline', params: { chapterId } } as any)}
         >
-          <MessageSquare color={currentColors.secondary} size={24} />
+          <MessageSquare color={currentColors.textSecondary} size={24} />
           <View style={{ flex: 1 }}>
             <Typography variant="bodyBold">Thương lượng Deadline</Typography>
             <Typography variant="caption" color={currentColors.textSecondary}>Xin gia hạn hoặc xem yêu cầu</Typography>
@@ -152,7 +173,7 @@ export default function ChapterDetail() {
           <>
             <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Phản hồi & Đánh giá</Typography>
             <TouchableOpacity style={[styles.workflowCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
-              <MessageSquare color={currentColors.secondary} size={24} />
+              <MessageSquare color={currentColors.textSecondary} size={24} />
               <View style={{ flex: 1 }}>
                 <Typography variant="bodyBold">Bình luận của Editor</Typography>
                 <Typography variant="caption" color={currentColors.textSecondary}>{chapter.editorCommentsCount} bình luận mới</Typography>
@@ -168,37 +189,9 @@ export default function ChapterDetail() {
 
       {chapter?.status !== 'PUBLISHED' && chapter?.status !== 'READY_FOR_PRINT' && (
         <View style={[styles.footer, { borderTopColor: currentColors.border }]}>
-          {chapter?.status === 'EDITOR_REVISION' || chapter?.status === 'EDITOR_REVIEW' ? (
-            <Button 
-              title="Nộp lại cho Editor" 
-              variant="primary" 
-              style={{ flex: 1 }} 
-              onPress={async () => {
-                try {
-                  await mangakaApi.resubmitManuscript(chapterId as string); 
-                  Alert.alert('Thành công', 'Đã nộp lại Manuscript cho Editor.');
-                  fetchChapter();
-                } catch (e: any) {
-                  Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
-                }
-              }}
-            />
-          ) : chapter?.status === 'IN_PRODUCTION' || chapter?.status === 'DRAFT' ? (
-            <Button 
-              title="Nộp cho Editor" 
-              variant="primary" 
-              style={{ flex: 1 }} 
-              onPress={async () => {
-                try {
-                  await mangakaApi.submitManuscript(chapterId as string); 
-                  Alert.alert('Thành công', 'Đã nộp Manuscript cho Editor.');
-                  fetchChapter();
-                } catch (e: any) {
-                  Alert.alert('Không thể nộp', e.response?.data?.message || 'Chưa đủ điều kiện nộp.');
-                }
-              }}
-            />
-          ) : null}
+          <Typography variant="caption" color={currentColors.textSecondary} style={{ textAlign: 'center' }}>
+            Nộp hoặc nộp lại manuscript thực hiện trên bản web.
+          </Typography>
         </View>
       )}
     </SafeAreaView>
@@ -234,6 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12
   },
+  productionCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 6, marginBottom: 12 },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,

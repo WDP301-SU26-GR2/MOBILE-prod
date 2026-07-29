@@ -1,19 +1,11 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 import { Home, BookOpen, Users, Trophy, Bell, UserCircle } from 'lucide-react-native';
-import { TouchableOpacity } from 'react-native';
 
 export default function MangakaTabsLayout() {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
-  const router = useRouter();
-
-  const HeaderProfileIcon = () => (
-    <TouchableOpacity onPress={() => router.push('/(mangaka-tabs)/profile')} style={{ marginRight: 16 }}>
-      <UserCircle color={currentColors.text} size={24} />
-    </TouchableOpacity>
-  );
 
   return (
     <Tabs screenOptions={{
@@ -94,6 +86,7 @@ export default function MangakaTabsLayout() {
           href: null,
         }} 
       />
+      <Tabs.Screen name="insights" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, View, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
@@ -7,6 +7,7 @@ import { mangakaApi } from '../../api/mangaka';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ChevronLeft, DollarSign, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react-native';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function EarningsScreen() {
   const router = useRouter();
@@ -16,26 +17,28 @@ export default function EarningsScreen() {
   
   const [earnings, setEarnings] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
+  const user = useAuthStore((state) => state.user);
 
-  const fetchEarnings = async () => {
+  const fetchEarnings = useCallback(async () => {
     try {
       setLoading(true);
+      const userId = user?.id || user?.userId;
       const [earningsData, paymentsData] = await Promise.all([
         mangakaApi.getMangakaEarningsDashboard(),
-        mangakaApi.getPayments()
+        userId ? mangakaApi.getUserPayments(userId) : Promise.resolve(null)
       ]);
       setEarnings(earningsData);
-      setPayments(paymentsData?.items || []);
+      setPayments(paymentsData?.items || paymentsData?.data || []);
     } catch (e) {
       console.log('Error fetching earnings', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchEarnings();
-  }, []);
+    void fetchEarnings();
+  }, [fetchEarnings]);
 
   const formatVND = (amount: number) => {
     return (amount || 0).toLocaleString('vi-VN') + ' đ';
@@ -54,6 +57,13 @@ export default function EarningsScreen() {
     if (status === 'APPROVED') return 'Đã duyệt';
     if (status === 'MISSED') return 'Trượt mốc';
     return status;
+  };
+
+  const showPayment = async (id: string) => {
+    try {
+      const payment = await mangakaApi.getPayment(id);
+      Alert.alert('Chi tiết thanh toán', [payment?.paymentType, payment?.status, payment?.amount != null ? formatVND(payment.amount) : null, payment?.note].filter(Boolean).join('\n'));
+    } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
   return (
@@ -102,7 +112,7 @@ export default function EarningsScreen() {
           )}
 
           {payments.map(payment => (
-            <View key={payment.id} style={[styles.paymentCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+            <TouchableOpacity key={payment.id} onPress={() => void showPayment(payment.id)} style={[styles.paymentCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
               <View style={styles.iconBox}>
                 {payment.status === 'PAID' ? (
                   <ArrowUpRight color={currentColors.success} size={24} />
@@ -126,7 +136,7 @@ export default function EarningsScreen() {
               <Typography variant="bodyBold" style={{ color: getStatusColor(payment.status) }}>
                 {payment.status === 'PAID' ? '+' : ''}{formatVND(payment.amount)}
               </Typography>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>

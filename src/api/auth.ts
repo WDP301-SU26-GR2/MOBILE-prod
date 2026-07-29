@@ -21,16 +21,20 @@ export const authApi = {
     const response = await apiClient.get('/me');
     return response.data;
   },
-  updateMe: async (data: any) => {
-    const response = await apiClient.patch('/me', data);
-    return response.data;
-  },
   forgotPassword: async (data: any) => {
     const response = await apiClient.post('/auth/forgot-password', data);
     return response.data;
   },
   sendOtpEmail: async (data: { email: string; purpose: string }) => {
     const response = await apiClient.post('/auth/send-otp-email', data);
+    return response.data;
+  },
+  logout: async (refreshToken: string) => {
+    const response = await apiClient.post('/auth/logout', { refreshToken });
+    return response.data;
+  },
+  changePassword: async (data: { currentPassword: string; newPassword: string; confirmNewPassword: string }) => {
+    const response = await apiClient.post('/auth/change-password', data);
     return response.data;
   }
 };

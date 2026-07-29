@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { create as createAxios } from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 // Cấu hình URL thông qua biến môi trường (.env) hoặc dùng local port cho việc dev
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-mangaka.novaproj.site';
 
-export const apiClient = axios.create({
+export const apiClient = createAxios({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -17,8 +17,29 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const requestUrl = config.url || '';
-    const isPublicRequest = requestUrl.startsWith('/auth/') || requestUrl.startsWith('/public/') || requestUrl.startsWith('/vote/');
-    const accessToken = useAuthStore.getState().accessToken;
+    const isPublicAuthRequest = [
+      '/auth/login',
+      '/auth/google',
+      '/auth/register',
+      '/auth/verify-email',
+      '/auth/send-otp-email',
+      '/auth/forgot-password',
+      '/auth/refresh-token',
+      '/auth/logout',
+    ].includes(requestUrl);
+    const isPublicRequest = isPublicAuthRequest || requestUrl.startsWith('/public/') || requestUrl.startsWith('/vote/');
+    const { accessToken, user } = useAuthStore.getState();
+    const roleCode = typeof user?.role === 'string' ? user.role : user?.role?.code;
+    const method = (config.method || 'get').toLowerCase();
+    const isReadOnlyDownload = method === 'post' && (/^\/tasks\/[^/]+\/download-url$/.test(requestUrl) || requestUrl === '/uploads/sign-download');
+    const isAuthSessionAction = method === 'post' && (requestUrl === '/auth/logout' || requestUrl === '/auth/change-password');
+
+    // Mobile is intentionally a read-only companion for internal roles. Keep this
+    // enforcement at the transport boundary so new screens cannot accidentally
+    // call a state-changing endpoint.
+    if ((roleCode === 'MANGAKA' || roleCode === 'ASSISTANT') && method !== 'get' && !isReadOnlyDownload && !isAuthSessionAction) {
+      return Promise.reject(new Error('This action is available on the web version only.'));
+    }
     if (!isPublicRequest && accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -47,11 +68,20 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const requestUrl = originalRequest?.url || '';
-    const isAuthRequest = requestUrl.startsWith('/auth/');
+    const isPublicAuthRequest = [
+      '/auth/login',
+      '/auth/google',
+      '/auth/register',
+      '/auth/verify-email',
+      '/auth/send-otp-email',
+      '/auth/forgot-password',
+      '/auth/refresh-token',
+      '/auth/logout',
+    ].includes(requestUrl);
     
     // Login/register/OTP endpoints are public. A 401 there means invalid input
     // or credentials, not an expired app session, so let the screen handle it.
-    if (error.response?.status === 401 && !isAuthRequest && originalRequest && !originalRequest._retry) {
+    if (error.response?.status === 401 && !isPublicAuthRequest && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
           failedQueue.push({ resolve, reject });

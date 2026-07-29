@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, RefreshControl, ScrollView, Alert } from 'react-native';
+import { Alert, View, StyleSheet, TouchableOpacity, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
@@ -22,13 +22,13 @@ export default function ReviewInbox() {
     try {
       setLoading(true);
       const [tasksData, revisionsData, seriesData] = await Promise.all([
-        mangakaApi.getTasks({ status: 'SUBMITTED' }),
-        mangakaApi.getRevisionRequests(),
-        mangakaApi.getMySeries()
+        mangakaApi.getAllTasks({ status: 'SUBMITTED' }),
+        mangakaApi.getAllRevisionRequests({ isResolved: 'false' }),
+        mangakaApi.getAllMySeries()
       ]);
       
       setTasks(tasksData?.items || []);
-      setRevisions(revisionsData?.items?.filter((r: any) => !r.resolvedAt) || []);
+      setRevisions(revisionsData?.items || []);
       setFranchises(seriesData?.items?.filter((s: any) => s.franchiseConsentStatus === 'PENDING') || []);
     } catch (e) {
       console.log('Error fetching review inbox:', e);
@@ -56,16 +56,24 @@ export default function ReviewInbox() {
       title = `Yêu cầu sửa: ${item.targetType}`;
       description = `Vòng ${item.round}: ${item.reason}`;
       icon = <FileEdit color={currentColors.warning} size={24} />;
-      onPress = () => {}; // TODO: link to revision details or chapter
+      onPress = () => Alert.alert(
+        title,
+        [
+          item.series?.title,
+          description,
+          item.requester?.displayName ? `Người yêu cầu: ${item.requester.displayName}` : null,
+          item.recipient?.displayName ? `Người sửa: ${item.recipient.displayName}` : null,
+          item.createdAt ? `Tạo lúc: ${new Date(item.createdAt).toLocaleString('vi-VN')}` : null,
+        ].filter(Boolean).join('\n'),
+      );
     } else if (type === 'franchise') {
       title = `Đồng ý bản quyền: ${item.title}`;
-      description = `Cần xác nhận nhượng quyền cho phần tiếp theo`;
+      description = `Cần xác nhận nhượng quyền cho phần tiếp theo (thực hiện trên web)`;
       icon = <HelpCircle color={currentColors.primary} size={24} />;
-      onPress = () => Alert.alert('Xác nhận bản quyền', `Bạn có đồng ý cho phép series phái sinh “${item.title}” tiếp tục nộp không?`, [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Từ chối', style: 'destructive', onPress: () => mangakaApi.franchiseConsent(item.id, false).then(fetchInbox) },
-        { text: 'Đồng ý', onPress: () => mangakaApi.franchiseConsent(item.id, true).then(fetchInbox) },
-      ]);
+      onPress = () => Alert.alert(
+        'Thao tác trên web',
+        'Mobile chỉ hiển thị trạng thái. Việc xác nhận nhượng quyền được thực hiện trên bản web.',
+      );
     }
 
     return (

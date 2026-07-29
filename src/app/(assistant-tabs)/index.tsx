@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { Typography } from '../../components/Typography';
-import { mangakaApi } from '../../api/mangaka';
+import { assistantReadApi } from '../../api/assistant';
 import { colors } from '../../theme/colors';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import { CheckSquare, Clock, Star, Users, Bell, UserCircle } from 'lucide-react-native';
+import { CheckSquare, Star, Users, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
 export default function AssistantHome() {
-  const router = useRouter();
   const { user } = useAuthStore();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
@@ -20,7 +18,7 @@ export default function AssistantHome() {
 
   const fetchDashboard = async () => {
     try {
-      const res = await mangakaApi.getAssistantDashboard();
+      const res = await assistantReadApi.getDashboard();
       setData(res);
     } catch (e) {
       console.log('Error fetching assistant dashboard', e);

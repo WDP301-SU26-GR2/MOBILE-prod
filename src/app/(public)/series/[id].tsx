@@ -3,7 +3,6 @@ import { View, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } fro
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Typography } from '../../../components/Typography';
-import { Button } from '../../../components/Button';
 import { publicApi } from '../../../api/public';
 import { colors } from '../../../theme/colors';
 import { useThemeStore } from '../../../store/useThemeStore';

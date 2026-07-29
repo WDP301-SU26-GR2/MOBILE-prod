@@ -7,7 +7,17 @@ export type PublicationType = 'WEEKLY' | 'MONTHLY' | 'IRREGULAR';
 export const DISABLED_RECAPTCHA_TOKEN = 'captcha-disabled';
 
 export interface VoteContextParams {
-  publicationType?: Extract<PublicationType, 'WEEKLY' | 'MONTHLY'>;
+  periodId: string;
+}
+
+export interface OpenVotePeriodsParams {
+  magazine?: string;
+  publicationType?: PublicationType;
+}
+
+export interface RankingScope {
+  magazine: string;
+  publicationType: PublicationType;
 }
 
 export interface VotePayload {
@@ -18,10 +28,22 @@ export interface VotePayload {
   captchaToken: string;
 }
 
+type CatalogParams = { q?: string; genre?: string; demographic?: string; publicationType?: string; status?: string; limit?: number; offset?: number };
+
+const getCatalogPage = async (params?: CatalogParams) => {
+  const safeParams = { ...params, limit: Math.min(params?.limit ?? 20, 50) };
+  const res = await apiClient.get('/public/series', { params: safeParams });
+  return res.data?.data;
+};
+
 export const publicApi = {
-  getCatalog: async (params?: { q?: string; genre?: string; demographic?: string; publicationType?: string; status?: string; limit?: number; offset?: number }) => {
-    const res = await apiClient.get('/public/series', { params });
-    return res.data?.data;
+  getCatalog: getCatalogPage,
+  getAllCatalog: async (params?: Omit<CatalogParams, 'limit' | 'offset'>) => {
+    const first = await getCatalogPage({ ...params, limit: 50, offset: 0 });
+    const total = first?.total ?? first?.items?.length ?? 0;
+    const remainingOffsets = Array.from({ length: Math.max(0, Math.ceil(total / 50) - 1) }, (_, index) => (index + 1) * 50);
+    const rest = await Promise.all(remainingOffsets.map((offset) => getCatalogPage({ ...params, limit: 50, offset })));
+    return { ...first, items: [first, ...rest].flatMap((page) => page?.items ?? []) };
   },
   getSeriesDetail: async (id: string) => {
     const res = await apiClient.get(`/public/series/${id}`);
@@ -31,8 +53,16 @@ export const publicApi = {
     const res = await apiClient.get(`/public/chapters/${chapterId}/pages`);
     return res.data?.data;
   },
+  getOpenVotePeriods: async (params?: OpenVotePeriodsParams) => {
+    const res = await apiClient.get('/vote/periods/open', { params });
+    return res.data?.data;
+  },
   getVoteContext: async (params?: VoteContextParams) => {
     const res = await apiClient.get('/vote/context', { params });
+    return res.data?.data;
+  },
+  getLiveVoteTally: async (periodId: string) => {
+    const res = await apiClient.get('/vote/live', { params: { periodId } });
     return res.data?.data;
   },
   sendVoteOtp: async (identity: string, captchaToken = DISABLED_RECAPTCHA_TOKEN) => {
@@ -43,16 +73,22 @@ export const publicApi = {
     const res = await apiClient.post('/vote', { ...payload, captchaToken: payload.captchaToken || DISABLED_RECAPTCHA_TOKEN });
     return res.data;
   },
-  getLatestRankingResults: async (params?: { publicationType?: string }) => {
+  getLatestRankingResults: async (params: RankingScope) => {
     const res = await apiClient.get('/vote/results/latest', { params });
     return res.data?.data;
   },
-  getVotePeriods: async () => {
-    const res = await apiClient.get('/vote/periods');
+  getVotePeriods: async (params: RankingScope & { limit?: number }) => {
+    const res = await apiClient.get('/vote/periods', {
+      params: { ...params, limit: Math.min(params.limit ?? 24, 24) },
+    });
     return res.data?.data;
   },
-  getRankingResults: async (surveyPeriodId: string, publicationType?: string) => {
-    const res = await apiClient.get('/vote/results', { params: { surveyPeriodId, publicationType } });
+  getRankingResults: async (surveyPeriodId: string) => {
+    const res = await apiClient.get('/vote/results', { params: { surveyPeriodId } });
+    return res.data?.data;
+  },
+  getAggregateRanking: async (params: RankingScope & { year: number; level: 'MONTH' | 'YEAR'; month?: number }) => {
+    const res = await apiClient.get('/rankings/aggregate', { params });
     return res.data?.data;
   },
 };
@@ -63,10 +99,12 @@ export interface SeriesPublic {
   coverImage?: string;
   coverImageUrl?: string;
   synopsis?: string;
-  mangakaName: string;
   genres: string[];
+  demographic?: string | null;
+  status: string;
+  magazine?: string | null;
   publicationType?: string;
-  latestChapterNumber?: number;
+  publishedChapterCount: number;
 }
 
 

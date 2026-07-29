@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, View, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -8,7 +8,7 @@ import { Button } from '../../../components/Button';
 import { mangakaApi } from '../../../api/mangaka';
 import { colors } from '../../../theme/colors';
 import { useThemeStore } from '../../../store/useThemeStore';
-import { Edit2, Plus, Image as ImageIcon, CheckCircle, Clock, UserCheck, ChevronLeft } from 'lucide-react-native';
+import { CheckCircle, Clock, UserCheck, ChevronLeft } from 'lucide-react-native';
 
 export default function SeriesDetailMangaka() {
   const { id } = useLocalSearchParams();
@@ -18,16 +18,22 @@ export default function SeriesDetailMangaka() {
   const [series, setSeries] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
+  const [seriesNames, setSeriesNames] = useState<any[]>([]);
+  const [publicationVersions, setPublicationVersions] = useState<any[]>([]);
+  const [seriesPayments, setSeriesPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
 
-  const fetchDetail = async () => {
+  const fetchDetail = useCallback(async () => {
     try {
       setLoading(true);
-      const [seriesData, chaptersData, contractsData] = await Promise.all([
+      const [seriesData, chaptersData, contractsData, namesData, publicationsData, paymentsData] = await Promise.all([
         mangakaApi.getSeriesDetail(id as string),
         mangakaApi.getChapters(id as string),
-        mangakaApi.getContracts({ seriesId: id as string })
+        mangakaApi.getContracts({ seriesId: id as string }),
+        mangakaApi.getAllSeriesNames(id as string),
+        mangakaApi.getPublicationVersions(id as string),
+        mangakaApi.getSeriesPayments(id as string),
       ]);
       
       let finalCoverUrl = seriesData.coverImageUrl || seriesData.coverImage;
@@ -39,16 +45,19 @@ export default function SeriesDetailMangaka() {
       setSeries({ ...seriesData, signedCoverUrl: finalCoverUrl });
       setChapters(chaptersData?.items || chaptersData || []);
       setContracts(contractsData?.items || contractsData || []);
+      setSeriesNames(namesData?.items || namesData || []);
+      setPublicationVersions(publicationsData?.items || publicationsData || []);
+      setSeriesPayments(paymentsData?.items || paymentsData?.data || paymentsData || []);
     } catch (e) {
       console.log('Error fetching series detail or chapters', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    fetchDetail();
-  }, [id]);
+    void fetchDetail();
+  }, [fetchDetail]);
 
   if (loading) {
     return (
@@ -69,18 +78,6 @@ export default function SeriesDetailMangaka() {
 
   const isProposal = series.status === 'DRAFT' || series.status === 'IN_REVIEW' || series.status === 'PROPOSAL_REVISION';
   const isAbandoned = series.status === 'ABANDONED' || series.status === 'WITHDRAWN';
-
-  const handleReopen = async () => {
-    try {
-      setLoading(true);
-      await mangakaApi.reopenSeries(series.id);
-      Alert.alert('Thành công', 'Đã chuyển thành Bản nháp, vui lòng nộp lại.');
-      fetchDetail();
-    } catch (e: any) {
-      Alert.alert('Lỗi', e.response?.data?.message || 'Lỗi nộp lại');
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
@@ -136,13 +133,19 @@ export default function SeriesDetailMangaka() {
               <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>
                 {series.proposal?.synopsis || 'Chưa có tóm tắt.'}
               </Typography>
+              {(seriesNames.length > 0 || publicationVersions.length > 0 || seriesPayments.length > 0) && <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+                <Typography variant="bodyBold">Name & phiên bản xuất bản</Typography>
+                {seriesNames.map((name: any, index: number) => <TouchableOpacity key={name.id || index} onPress={() => name.id && void mangakaApi.getSeriesName(id as string, name.id).then((detail) => Alert.alert('Name của series', detail?.title || detail?.status || 'Chi tiết Name'))}><Typography variant="caption" color={currentColors.primary}>Xem Name {name.title || index + 1}</Typography></TouchableOpacity>)}
+                {publicationVersions.map((version: any, index: number) => <TouchableOpacity key={version.id || index} onPress={() => version.id && void mangakaApi.getPublicationVersion(version.id).then((detail) => Alert.alert('Phiên bản xuất bản', detail?.version || detail?.status || 'Chi tiết phiên bản'))}><Typography variant="caption" color={currentColors.primary}>Xem phiên bản xuất bản {version.versionNumber || index + 1}</Typography></TouchableOpacity>)}
+                {seriesPayments.length > 0 && <Typography variant="caption" color={currentColors.textSecondary}>{seriesPayments.length} khoản thanh toán theo series</Typography>}
+              </View>}
               
               {isProposal && series.status === 'DRAFT' && (
                 <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
                   <Typography variant="bodyMedium" color={currentColors.text} style={{ marginBottom: 16 }}>
                     Bản nháp đang chờ nộp.
                   </Typography>
-                  <Button title="Nộp Đề xuất" onPress={() => mangakaApi.submitProposal(series.id)} />
+                  <Typography variant="caption" color={currentColors.textSecondary}>Nộp đề xuất thực hiện trên bản web.</Typography>
                 </View>
               )}
 
@@ -151,13 +154,7 @@ export default function SeriesDetailMangaka() {
                   <Typography variant="bodyMedium" color={currentColors.error} style={{ marginBottom: 16 }}>
                     Đề xuất đã bị từ chối hoặc thu hồi. Bạn có thể nộp lại.
                   </Typography>
-                  <Button 
-                    title="Nộp lại" 
-                    onPress={() => Alert.alert('Xác nhận', 'Chuyển series này về Bản nháp?', [
-                      { text: 'Hủy', style: 'cancel' },
-                      { text: 'Đồng ý', onPress: handleReopen }
-                    ])} 
-                  />
+                  <Typography variant="caption" color={currentColors.textSecondary}>Nộp lại đề xuất thực hiện trên bản web.</Typography>
                 </View>
               )}
 
@@ -166,7 +163,7 @@ export default function SeriesDetailMangaka() {
                   <Typography variant="bodyMedium" color={currentColors.text} style={{ marginBottom: 16 }}>
                     Truyện đang được xuất bản.
                   </Typography>
-                  <Button title="Tạo Chương Mới" onPress={() => {}} />
+                  <Typography variant="caption" color={currentColors.textSecondary}>Tạo chương mới thực hiện trên bản web.</Typography>
                 </View>
               )}
             </View>

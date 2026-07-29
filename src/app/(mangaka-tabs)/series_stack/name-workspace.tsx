@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions, Alert, Modal, Pressable } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../../components/Typography';
 import { colors } from '../../../theme/colors';
@@ -8,10 +8,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { ChevronLeft } from 'lucide-react-native';
 import { mangakaApi } from '../../../api/mangaka';
-
-const { width } = Dimensions.get('window');
-const COLUMN_COUNT = 3;
-const ITEM_WIDTH = (width - 32 - (COLUMN_COUNT - 1) * 8) / COLUMN_COUNT;
 
 export default function NameWorkspace() {
   const router = useRouter();
@@ -22,19 +18,14 @@ export default function NameWorkspace() {
   const [nameInfo, setNameInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const lastUrlRenewal = useRef(0);
 
-  React.useEffect(() => {
-    if (chapterId) {
-      fetchNameData();
-    }
-  }, [chapterId]);
-
-  const fetchNameData = async () => {
+  const fetchNameData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await mangakaApi.getChapterNames(chapterId as string);
       if (data && data.items && data.items.length > 0) {
-        const firstName = data.items[0];
+        const firstName = await mangakaApi.getChapterName(chapterId as string, data.items[0].id).catch(() => data.items[0]);
         setNameInfo(firstName);
         
         // Xin signed URL cho từng trang
@@ -58,14 +49,28 @@ export default function NameWorkspace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [chapterId]);
+
+  const renewExpiredUrls = useCallback(() => {
+    const now = Date.now();
+    if (now - lastUrlRenewal.current < 10_000) return;
+    lastUrlRenewal.current = now;
+    setSelectedImage(null);
+    void fetchNameData();
+  }, [fetchNameData]);
+
+  React.useEffect(() => {
+    if (chapterId) {
+      void fetchNameData();
+    }
+  }, [chapterId, fetchNameData]);
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[styles.pageCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
       onPress={() => setSelectedImage(item.signedUrl || item.fileUrl)}
     >
-      <Image source={{ uri: item.signedUrl || item.fileUrl || 'https://via.placeholder.com/150' }} style={styles.pageImage} contentFit="cover" />
+      <Image source={{ uri: item.signedUrl || item.fileUrl || 'https://via.placeholder.com/150' }} style={styles.pageImage} contentFit="cover" onError={item.signedUrl ? renewExpiredUrls : undefined} />
       <View style={styles.pageInfo}>
         <Typography variant="bodyBold">Trang {item.pageNumber}</Typography>
       </View>
@@ -116,7 +121,7 @@ export default function NameWorkspace() {
               <Typography color="#FFF" variant="bodyBold">Đóng X</Typography>
             </TouchableOpacity>
             {selectedImage && (
-              <Image source={{ uri: selectedImage }} style={styles.fullImage} contentFit="contain" />
+              <Image source={{ uri: selectedImage }} style={styles.fullImage} contentFit="contain" onError={renewExpiredUrls} />
             )}
           </View>
         </View>

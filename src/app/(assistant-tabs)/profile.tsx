@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput as RNTextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Typography } from '../../components/Typography';
@@ -8,16 +8,16 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
 import { useRouter } from 'expo-router';
 import { Moon, Sun, LogOut, Lock, User } from 'lucide-react-native';
-import { apiClient } from '../../api/client';
+import { authApi } from '../../api/auth';
+import { assistantReadApi } from '../../api/assistant';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, refreshToken } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const currentColors = colors[theme];
   const router = useRouter();
 
-  const [displayName, setDisplayName] = useState(user?.name || '');
-  const [saving, setSaving] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   // Change password state
   const [showPassSection, setShowPassSection] = useState(false);
@@ -26,17 +26,13 @@ export default function ProfileScreen() {
   const [confirmPass, setConfirmPass] = useState('');
   const [changingPass, setChangingPass] = useState(false);
 
-  const handleSaveProfile = async () => {
-    try {
-      setSaving(true);
-      await apiClient.patch('/me', { displayName: displayName || '' });
-      Alert.alert('Thành công', 'Đã cập nhật thông tin.');
-    } catch (e: any) {
-      Alert.alert('Lỗi', e.response?.data?.message || 'Không thể lưu thông tin');
-    } finally {
-      setSaving(false);
-    }
-  };
+  useEffect(() => {
+    assistantReadApi.getProfile().then(setProfile).catch(() => setProfile(null));
+  }, []);
+
+  const profileName = profile?.displayName || profile?.name || user?.name || 'Chưa có tên hiển thị';
+  const profileEmail = profile?.email || user?.email || 'Chưa có email';
+  const roleCode = typeof user?.role === 'object' ? user.role?.code : user?.role;
 
   const handleChangePassword = async () => {
     if (newPass !== confirmPass) {
@@ -49,7 +45,7 @@ export default function ProfileScreen() {
     }
     try {
       setChangingPass(true);
-      await apiClient.post('/auth/change-password', { currentPassword: currentPass, newPassword: newPass });
+      await authApi.changePassword({ currentPassword: currentPass, newPassword: newPass, confirmNewPassword: confirmPass });
       Alert.alert('Thành công', 'Đã đổi mật khẩu. Vui lòng đăng nhập lại.');
       setShowPassSection(false);
       setCurrentPass('');
@@ -70,8 +66,8 @@ export default function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await apiClient.post('/auth/logout');
-          } catch (_) {}
+            if (refreshToken) await authApi.logout(refreshToken);
+          } catch {}
           logout();
           router.replace('/(auth)/login');
         }
@@ -91,12 +87,12 @@ export default function ProfileScreen() {
         <View style={styles.topHeader}>
           <View style={[styles.avatar, { backgroundColor: currentColors.primary }]}>
             <Typography variant="h1" font="headline" color="#fff">
-              {user?.name?.charAt(0) || 'U'}
+              {profileName.charAt(0) || 'U'}
             </Typography>
           </View>
           <View style={[styles.roleBadge, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
             <Typography variant="label" font="label" color={currentColors.primary}>
-              {user?.role || 'ASSISTANT'}
+              {roleCode || 'ASSISTANT'}
             </Typography>
           </View>
         </View>
@@ -110,19 +106,16 @@ export default function ProfileScreen() {
 
           <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 4 }}>Email</Typography>
           <View style={[styles.readOnlyField, { backgroundColor: currentColors.background, borderColor: currentColors.border }]}>
-            <Typography color={currentColors.textSecondary}>{user?.email || 'Chưa có email'}</Typography>
+            <Typography color={currentColors.textSecondary}>{profileEmail}</Typography>
           </View>
 
           <Typography variant="caption" color={currentColors.textSecondary} style={{ marginTop: 12, marginBottom: 4 }}>Tên hiển thị</Typography>
-          <RNTextInput
-            style={inputStyle}
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder="Nhập tên hiển thị..."
-            placeholderTextColor={currentColors.textSecondary}
-          />
-
-          <Button title="Lưu thay đổi" onPress={handleSaveProfile} loading={saving} style={{ marginTop: 16 }} />
+          <View style={[styles.readOnlyField, { backgroundColor: currentColors.background, borderColor: currentColors.border }]}>
+            <Typography color={currentColors.textSecondary}>{profileName}</Typography>
+          </View>
+          <Typography variant="caption" color={currentColors.textSecondary} style={{ marginTop: 8 }}>
+            Hồ sơ chỉ xem trên mobile. Chỉnh sửa thực hiện trên bản web.
+          </Typography>
         </View>
 
         {/* Theme Toggle */}

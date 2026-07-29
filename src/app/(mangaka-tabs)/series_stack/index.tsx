@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,10 +17,10 @@ export default function MySeries() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const fetchMySeries = async () => {
+  const fetchMySeries = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await mangakaApi.getMySeries({ status: statusFilter || undefined });
+      const data = await mangakaApi.getAllMySeries({ status: statusFilter || undefined });
       const seriesList = data?.items || [];
       
       // Lấy số chương thực tế cho từng truyện
@@ -38,7 +38,7 @@ export default function MySeries() {
             }
             
             return { ...s, chaptersCount: count, signedCoverUrl: finalCoverUrl };
-          } catch (e) {
+          } catch {
             return { ...s, chaptersCount: 0, signedCoverUrl: s.coverImage || s.coverImageUrl };
           }
         })
@@ -50,11 +50,11 @@ export default function MySeries() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchMySeries();
-  }, [statusFilter]);
+    void fetchMySeries();
+  }, [fetchMySeries]);
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 

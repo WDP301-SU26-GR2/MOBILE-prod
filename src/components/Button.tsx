@@ -41,11 +41,11 @@ export const Button: React.FC<ButtonProps> = ({
   const getTextColor = () => {
     if (disabled) return currentColors.textSecondary;
     switch (resolvedVariant) {
-      case 'primary': return '#FFFFFF';
-      case 'secondary': return '#FFFFFF';
+      case 'primary': return currentColors.primaryForeground;
+      case 'secondary': return currentColors.secondaryForeground;
       case 'inverted': return currentColors.background;
       case 'outlined': return currentColors.text;
-      default: return '#FFFFFF';
+      default: return currentColors.primaryForeground;
     }
   };
 
