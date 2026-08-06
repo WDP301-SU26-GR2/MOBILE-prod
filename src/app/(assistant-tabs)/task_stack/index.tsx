@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../../components/Typography';
@@ -13,6 +13,7 @@ const TABS = [
   { id: 'SUBMITTED', label: 'Đã nộp' },
   { id: 'REVISION_REQUESTED', label: 'Cần sửa' },
   { id: 'APPROVED', label: 'Đã duyệt' },
+  { id: 'CANCELLED', label: 'Đã huỷ' },
 ];
 
 export default function TaskListScreen() {
@@ -33,7 +34,7 @@ export default function TaskListScreen() {
       const res = await assistantReadApi.getAllTasks();
       setTasks(res?.items || []);
     } catch (e) {
-      console.error(e);
+      console.error((e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,6 +51,7 @@ export default function TaskListScreen() {
       case 'SUBMITTED': return currentColors.warning;
       case 'REVISION_REQUESTED': return currentColors.error;
       case 'APPROVED': return currentColors.success;
+      case 'CANCELLED': return currentColors.textSecondary;
       default: return currentColors.textSecondary;
     }
   };
@@ -64,12 +66,19 @@ export default function TaskListScreen() {
     return (
       <TouchableOpacity 
         style={[styles.taskCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]} 
-        onPress={() => router.push(`/(assistant-tabs)/task_stack/${item.id}`)}
+        onPress={() => {
+          if (item.status === 'CANCELLED' && item.statusReason) {
+            Alert.alert('Lý do huỷ', item.statusReason);
+          }
+          router.push(`/(assistant-tabs)/task_stack/${item.id}`);
+        }}
       >
         <View style={styles.taskCardHeader}>
           <Typography variant="bodyBold">{item.series?.title} - Chương {item.chapter?.chapterNumber}</Typography>
           <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Typography variant="caption" style={{ color: '#FFF' }}>{item.status}</Typography>
+            <Typography variant="caption" style={{ color: '#FFF' }}>
+              {item.status}{item.status === 'CANCELLED' && item.statusReason ? ' ℹ️' : ''}
+            </Typography>
           </View>
         </View>
         <Typography variant="body" style={{ color: currentColors.textSecondary, marginBottom: 8 }}>

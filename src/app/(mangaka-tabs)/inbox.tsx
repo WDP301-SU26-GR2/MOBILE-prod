@@ -25,7 +25,7 @@ export default function MangakaInbox() {
       setNotifications(data?.items || []);
       setUnreadCount(data?.unreadCount ?? 0);
     } catch (error) {
-      console.log('Error fetching notifications', error);
+      console.log('Error fetching notifications', (error as any)?.message || "Unknown error");
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -43,7 +43,13 @@ export default function MangakaInbox() {
   const handleDeepLink = (item: any) => {
     setSelectedNotification(null);
     const referenceType = String(item.referenceType || item.type || '').toUpperCase();
-    if (referenceType.startsWith('CONTRACT')) {
+    if (referenceType.startsWith('SERIES_REQUEST')) {
+      router.push(`/(mangaka-tabs)/series_stack/series-request-detail?id=${item.referenceId}`);
+    } else if (['SERIES_WITHDRAWN_IN_REVIEW', 'SERIES_HIATUS_STARTED', 'SERIES_RESUMED'].includes(referenceType)) {
+      router.push(`/(mangaka-tabs)/series_stack/${item.referenceId}`);
+    } else if (referenceType === 'TASK_AUTO_CANCELLED' || referenceType.startsWith('TASK_DEADLINE_OVERDUE') || referenceType.startsWith('DEADLINE_WARNING')) {
+      router.push(`/(mangaka-tabs)/series_stack/review/${item.referenceId}`);
+    } else if (referenceType.startsWith('CONTRACT')) {
       router.push(`/(mangaka-tabs)/series_stack/contract/${item.referenceId}`);
     } else if (referenceType.startsWith('TASK') || referenceType.startsWith('REVIEW')) {
       router.push(`/(mangaka-tabs)/series_stack/review/${item.referenceId}`);
@@ -63,7 +69,7 @@ export default function MangakaInbox() {
   const canDeepLink = (item: any) => {
     if (!item?.referenceId) return false;
     const type = String(item.referenceType || item.type || '').toUpperCase();
-    return ['CONTRACT', 'TASK', 'REVIEW', 'CHAPTER', 'MANUSCRIPT', 'NAME', 'SERIES', 'PROPOSAL', 'SURVEY', 'RANKING', 'INVITE', 'ASSIGNMENT', 'COLLABORATION'].some((prefix) => type.includes(prefix));
+    return ['CONTRACT', 'TASK', 'REVIEW', 'CHAPTER', 'MANUSCRIPT', 'NAME', 'SERIES', 'PROPOSAL', 'SURVEY', 'RANKING', 'INVITE', 'ASSIGNMENT', 'COLLABORATION', 'DEADLINE_WARNING'].some((prefix) => type.includes(prefix));
   };
 
   const getNotificationTitle = (type: string) => {
@@ -80,7 +86,18 @@ export default function MangakaInbox() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: any }) => {
+    let titlePrefix = '';
+    let titleColor = currentColors.text;
+    const refType = String(item.referenceType || '').toUpperCase();
+    if (refType.startsWith('DEADLINE_WARNING:')) {
+      const parts = refType.split(':');
+      if (parts[1] === 'CRITICAL') { titlePrefix = '🚨 '; titleColor = currentColors.error; }
+      else if (parts[1] === 'RED') { titlePrefix = '🔴 '; titleColor = currentColors.error; }
+      else if (parts[1] === 'YELLOW') { titlePrefix = '🟡 '; titleColor = currentColors.warning; }
+    }
+    
+    return (
       <TouchableOpacity 
         style={[
           styles.card, 
@@ -90,12 +107,15 @@ export default function MangakaInbox() {
         onPress={() => handleAction(item)}
       >
         <View style={{ flex: 1 }}>
-          <Typography variant="bodyBold" style={{ marginBottom: 4 }}>{getNotificationTitle(item.type)}</Typography>
+          <Typography variant="bodyBold" style={{ marginBottom: 4, color: titleColor }}>
+            {titlePrefix}{getNotificationTitle(item.type)}
+          </Typography>
           <Typography variant="body" color={currentColors.textSecondary}>{item.content || item.message}</Typography>
         </View>
         {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: currentColors.primary }]} />}
       </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>

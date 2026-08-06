@@ -52,5 +52,4 @@ const dark = {
 export const colors = {
   light,
   dark,
-  ...dark,
 };

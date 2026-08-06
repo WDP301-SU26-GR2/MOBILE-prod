@@ -21,7 +21,7 @@ export default function AssistantHome() {
       const res = await assistantReadApi.getDashboard();
       setData(res);
     } catch (e) {
-      console.log('Error fetching assistant dashboard', e);
+      console.log('Error fetching assistant dashboard', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
       setRefreshing(false);

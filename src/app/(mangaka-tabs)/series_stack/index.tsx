@@ -46,7 +46,7 @@ export default function MySeries() {
       
       setSeries(seriesWithChapters);
     } catch (e) {
-      console.log('Error fetching my series', e);
+      console.log('Error fetching my series', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

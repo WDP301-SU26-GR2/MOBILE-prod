@@ -22,7 +22,7 @@ export default function SeriesDetail() {
         const data = await publicApi.getSeriesDetail(id as string);
         setSeries(data);
       } catch (e) {
-        console.log('Error fetching series detail', e);
+        console.log('Error fetching series detail', (e as any)?.message || "Unknown error");
       } finally {
         setLoading(false);
       }

@@ -1,4 +1,4 @@
-import axios, { create as createAxios } from 'axios';
+import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 // Cấu hình URL thông qua biến môi trường (.env) hoặc dùng local port cho việc dev
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api-mangaka.novaproj.site';
 
-export const apiClient = createAxios({
+export const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ apiClient.interceptors.request.use(
       return Promise.reject(new Error('This action is available on the web version only.'));
     }
     if (!isPublicRequest && accessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.set('Authorization', `Bearer ${accessToken}`);
     }
     return config;
   },
@@ -104,22 +104,22 @@ apiClient.interceptors.response.use(
           
           if (res.data?.success && res.data?.data) {
             const { accessToken: newAccess, refreshToken: newRefresh, user } = res.data.data;
-            await useAuthStore.getState().setAuth(newAccess, newRefresh, user);
+            useAuthStore.getState().setAuth(newAccess, newRefresh, user);
             
-            originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+            originalRequest.headers.set('Authorization', `Bearer ${newAccess}`);
             processQueue(null, newAccess);
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
           processQueue(refreshError, null);
-          await useAuthStore.getState().logout();
+          useAuthStore.getState().logout();
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
         }
       } else {
         processQueue(new Error('No refresh token'), null);
-        await useAuthStore.getState().logout();
+        useAuthStore.getState().logout();
         isRefreshing = false;
         Alert.alert('Session Expired', 'Please log in again to continue.');
         router.replace('/(auth)/login');
@@ -131,7 +131,7 @@ apiClient.interceptors.response.use(
     const backendMessage = error.response?.data?.message;
     
     if (backendCode === 'Error.RefreshTokenAlreadyUsed') {
-      await useAuthStore.getState().logout();
+      useAuthStore.getState().logout();
       Alert.alert('Session Expired', 'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.');
       router.replace('/(auth)/login');
       return Promise.reject(error);

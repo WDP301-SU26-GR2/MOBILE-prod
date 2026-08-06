@@ -50,7 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ accessToken, refreshToken, user: JSON.parse(userStr) });
       }
     } catch (e) {
-      console.error('Failed to hydrate auth state', e);
+      console.error("Log message", (e as any)?.message || "Unknown error");
     } finally {
       set({ isLoading: false });
     }

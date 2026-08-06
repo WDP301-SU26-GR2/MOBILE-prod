@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Typography } from '../../components/Typography';
 import { TextInput } from '../../components/TextInput';
@@ -23,6 +24,7 @@ export default function LoginScreen() {
   const { setAuth } = useAuthStore();
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
+  const insets = useSafeAreaInsets();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -47,7 +49,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      console.log('Login failed', error);
+      console.log('Login failed', (error as any)?.message || "Unknown error");
       const errRes = error.response?.data;
       if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
         const newErrors: Record<string, string> = {};
@@ -88,7 +90,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      console.log('Google login api call failed', error);
+      console.log('Google login api call failed', (error as any)?.message || "Unknown error");
       Alert.alert('Lỗi Đăng nhập', error.response?.data?.message || 'Đăng nhập Google thất bại.');
     } finally {
       setLoading(false);
@@ -113,7 +115,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-      style={[styles.container, { backgroundColor: currentColors.background }]}
+      style={[styles.container, { backgroundColor: currentColors.background, paddingTop: Math.max(insets.top, 24) }]}
     >
       <TouchableOpacity
         accessibilityRole="button"

@@ -21,7 +21,7 @@ export default function StudioScreen() {
       const res = await assistantReadApi.getAllCollaborationInvites();
       setInvites(res?.items || []);
     } catch (e) {
-      console.error(e);
+      console.error((e as any)?.message || "Unknown error");
     }
   }, []);
 
@@ -30,7 +30,7 @@ export default function StudioScreen() {
       const res = await assistantReadApi.getAllStudioAssignments();
       setCollabs(res?.items || []);
     } catch (e) {
-      console.error(e);
+      console.error((e as any)?.message || "Unknown error");
     }
   }, []);
 

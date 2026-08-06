@@ -41,7 +41,7 @@ export default function RankingMangaka() {
         setLoading(false);
       }
     } catch (e) {
-      console.log('Error fetching series for ranking:', e);
+      console.log('Error fetching series for ranking:', (e as any)?.message || "Unknown error");
       setLoading(false);
     }
   };
@@ -52,7 +52,7 @@ export default function RankingMangaka() {
       const data = await mangakaApi.getRankings({ seriesId, periods: 12 });
       setRankings(data?.items || []);
     } catch (e) {
-      console.log('Error fetching rankings:', e);
+      console.log('Error fetching rankings:', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

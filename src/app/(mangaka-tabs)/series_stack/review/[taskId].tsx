@@ -29,6 +29,9 @@ export default function CompositeReview() {
       const data = await mangakaApi.getReviewTask(taskId as string);
       setTask(data);
       if (data) {
+        if (data.status === 'CANCELLED' && data.statusReason) {
+          Alert.alert('Tự động huỷ', data.statusReason);
+        }
         const displayFile = data.pageDisplayFile || data.pageOriginalFile;
         if (displayFile) {
            const origUrl = await mangakaApi.getTaskDownloadUrl(taskId as string, displayFile);
@@ -58,7 +61,7 @@ export default function CompositeReview() {
         }
       }
     } catch (error) {
-      console.log('Error fetching review task', error);
+      console.log('Error fetching review task', (error as any)?.message || "Unknown error");
       Alert.alert('Lỗi', 'Không thể tải chi tiết bài nộp.');
     } finally {
       setLoading(false);

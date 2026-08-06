@@ -81,6 +81,10 @@ export const mangakaApi = {
   getMangakas: async (params?: any) => (await apiClient.get('/mangakas', { params })).data?.data,
   getAllMangakas: async (params?: any) => collectAllPages(async (page) => (await apiClient.get('/mangakas', { params: page })).data?.data, params),
   getBoardRankings: async (surveyPeriodId: string) => (await apiClient.get('/rankings/board', { params: { surveyPeriodId } })).data?.data,
+  // Spec 30+31: Series Requests
+  getSeriesRequests: async (params?: { seriesId?: string; status?: string; requestType?: string; limit?: number; offset?: number }) => (await apiClient.get('/series-requests', { params })).data?.data,
+  getAllSeriesRequests: async (params?: { seriesId?: string; status?: string; requestType?: string }) => collectAllPages(async (page) => (await apiClient.get('/series-requests', { params: page })).data?.data, params),
+  getSeriesRequest: async (id: string) => (await apiClient.get(`/series-requests/${id}`)).data?.data,
   // Guide-approved signed read URL; this POST never mutates domain state.
   getSignedUrl: async (key: string) => {
     const response = await apiClient.post('/uploads/sign-download', { key });

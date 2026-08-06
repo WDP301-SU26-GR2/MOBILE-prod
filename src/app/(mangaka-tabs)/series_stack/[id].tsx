@@ -49,7 +49,7 @@ export default function SeriesDetailMangaka() {
       setPublicationVersions(publicationsData?.items || publicationsData || []);
       setSeriesPayments(paymentsData?.items || paymentsData?.data || paymentsData || []);
     } catch (e) {
-      console.log('Error fetching series detail or chapters', e);
+      console.log('Error fetching series detail or chapters', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -128,9 +128,35 @@ export default function SeriesDetailMangaka() {
 
         <View style={styles.content}>
           {activeTab === 'OVERVIEW' && (
-            <View>
-              <Typography variant="h3" color={currentColors.text} style={{ marginBottom: 8 }}>Tóm tắt</Typography>
-              <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>
+            <View style={{ gap: 16 }}>
+              {series.status === 'HIATUS' && (
+                <View style={[styles.actionBox, { backgroundColor: `${currentColors.warning}15`, borderColor: currentColors.warning }]}>
+                  <Typography variant="bodyBold" style={{ color: currentColors.warning, marginBottom: 4 }}>
+                    ⏸ Tạm ngưng
+                  </Typography>
+                  {!!series.hiatusExpectedReturnDate ? (
+                    <Typography variant="body" color={currentColors.textSecondary}>
+                      Dự kiến trở lại: {new Date(series.hiatusExpectedReturnDate).toLocaleDateString('vi-VN')}
+                    </Typography>
+                  ) : null}
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}
+                onPress={() => router.push('/(mangaka-tabs)/series_stack/series-requests')}
+              >
+                <Typography variant="bodyBold" style={{ color: currentColors.primary }}>
+                  Xem yêu cầu thay đổi trạng thái →
+                </Typography>
+                <Typography variant="caption" color={currentColors.textSecondary}>
+                  Yêu cầu rút hồ sơ / tạm ngưng / kết thúc sớm
+                </Typography>
+              </TouchableOpacity>
+
+              <View>
+                <Typography variant="h3" color={currentColors.text} style={{ marginBottom: 8 }}>Tóm tắt</Typography>
+                <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>
                 {series.proposal?.synopsis || 'Chưa có tóm tắt.'}
               </Typography>
               {(seriesNames.length > 0 || publicationVersions.length > 0 || seriesPayments.length > 0) && <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
@@ -166,6 +192,7 @@ export default function SeriesDetailMangaka() {
                   <Typography variant="caption" color={currentColors.textSecondary}>Tạo chương mới thực hiện trên bản web.</Typography>
                 </View>
               )}
+            </View>
             </View>
           )}
 

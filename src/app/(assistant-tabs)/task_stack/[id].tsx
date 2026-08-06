@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -34,6 +34,9 @@ export default function TaskDetailScreen() {
       if (res) {
         const t = res;
         setTask(t);
+        if (t.status === 'CANCELLED' && t.statusReason) {
+          Alert.alert('Tự động huỷ', t.statusReason);
+        }
         const pageId = t.pageId || t.page?.id;
         if (pageId) {
           assistantReadApi.getAllAnnotations({ targetType: 'PAGE', targetId: pageId })
@@ -70,7 +73,7 @@ export default function TaskDetailScreen() {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error((e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

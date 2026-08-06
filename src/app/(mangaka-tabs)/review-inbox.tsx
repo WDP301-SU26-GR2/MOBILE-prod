@@ -31,7 +31,7 @@ export default function ReviewInbox() {
       setRevisions(revisionsData?.items || []);
       setFranchises(seriesData?.items?.filter((s: any) => s.franchiseConsentStatus === 'PENDING') || []);
     } catch (e) {
-      console.log('Error fetching review inbox:', e);
+      console.log('Error fetching review inbox:', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

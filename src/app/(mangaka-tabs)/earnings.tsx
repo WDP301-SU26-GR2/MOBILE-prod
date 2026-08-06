@@ -30,7 +30,7 @@ export default function EarningsScreen() {
       setEarnings(earningsData);
       setPayments(paymentsData?.items || paymentsData?.data || []);
     } catch (e) {
-      console.log('Error fetching earnings', e);
+      console.log('Error fetching earnings', (e as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

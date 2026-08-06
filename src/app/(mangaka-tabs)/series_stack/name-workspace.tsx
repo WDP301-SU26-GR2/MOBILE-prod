@@ -45,7 +45,7 @@ export default function NameWorkspace() {
         setPages([]);
       }
     } catch (error) {
-      console.log('Error fetching names:', error);
+      console.log('Error fetching names:', (error as any)?.message || "Unknown error");
     } finally {
       setLoading(false);
     }

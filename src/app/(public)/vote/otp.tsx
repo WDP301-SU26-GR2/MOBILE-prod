@@ -83,7 +83,7 @@ export default function VoteOtpScreen() {
       try {
         seriesIds = JSON.parse(selectedSeriesIds as string);
       } catch (e) {
-        console.error('Invalid series ids format', e);
+        console.error('Invalid series ids format', (e as any)?.message || "Unknown error");
       }
       
       await publicApi.submitVote({

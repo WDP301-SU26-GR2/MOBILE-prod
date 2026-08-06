@@ -26,7 +26,7 @@ export default function ChapterDetail() {
           const progress = await mangakaApi.getChapterProgress(chapterId as string);
           setChapter({ ...data, ...progress });
         } catch (progressError) {
-          console.log('Error calculating progress', progressError);
+          console.log('Error calculating progress', (progressError as any)?.message || "Unknown error");
           setChapter(data);
         }
         try {
@@ -49,7 +49,7 @@ export default function ChapterDetail() {
         throw new Error('Data is empty');
       }
     } catch (error: any) {
-      console.log('Error fetching chapter detail', error);
+      console.log('Error fetching chapter detail', (error as any)?.message || "Unknown error");
       Alert.alert('Lỗi', `Không thể tải dữ liệu Chapter: ${error?.response?.data?.message || error.message}`);
       setChapter(null);
     } finally {

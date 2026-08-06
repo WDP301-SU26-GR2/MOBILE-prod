@@ -42,7 +42,7 @@ export default function PublicHome() {
       setHasMore(nextOffset + items.length < (catalogData?.total ?? 0));
       setOpenVotePeriods(openPeriodsData?.items ?? []);
     } catch (e) {
-      console.log('Fetch catalog error', e);
+      console.log('Fetch catalog error', (e as any)?.message || "Unknown error");
       setHasMore(false);
       setError('Không thể tải danh mục. Kiểm tra kết nối và thử lại.');
     } finally {

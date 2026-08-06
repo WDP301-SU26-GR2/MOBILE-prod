@@ -22,7 +22,7 @@ export default function AssistantInbox() {
       setNotifications(data?.items || []);
       setUnreadCount(data?.unreadCount ?? 0);
     } catch (error) {
-      console.log('Error fetching notifications', error);
+      console.log('Error fetching notifications', (error as any)?.message || "Unknown error");
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -32,6 +32,10 @@ export default function AssistantInbox() {
   const handleAction = (item: any) => {
     const referenceType = String(item.referenceType || item.entityType || item.type || '').toUpperCase();
     const referenceId = item.referenceId || item.entityId;
+    if (['SERIES_HIATUS_STARTED', 'SERIES_RESUMED'].includes(referenceType)) {
+      router.push('/(assistant-tabs)/task_stack/');
+      return;
+    }
     if (referenceType.startsWith('TASK') && referenceId) {
       router.push(`/(assistant-tabs)/task_stack/${referenceId}` as any);
       return;
