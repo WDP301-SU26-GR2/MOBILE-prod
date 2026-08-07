@@ -9,6 +9,7 @@ import { mangakaApi } from '../../../api/mangaka';
 import { colors } from '../../../theme/colors';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { CheckCircle, Clock, UserCheck, ChevronLeft } from 'lucide-react-native';
+import { translateSeriesStatus, translateChapterStatus, translateContractStatus, translateContractType } from '../../../utils/statusTranslator';
 
 export default function SeriesDetailMangaka() {
   const { id } = useLocalSearchParams();
@@ -18,7 +19,6 @@ export default function SeriesDetailMangaka() {
   const [series, setSeries] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
-  const [seriesNames, setSeriesNames] = useState<any[]>([]);
   const [publicationVersions, setPublicationVersions] = useState<any[]>([]);
   const [seriesPayments, setSeriesPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,11 +27,10 @@ export default function SeriesDetailMangaka() {
   const fetchDetail = useCallback(async () => {
     try {
       setLoading(true);
-      const [seriesData, chaptersData, contractsData, namesData, publicationsData, paymentsData] = await Promise.all([
+      const [seriesData, chaptersData, contractsData, publicationsData, paymentsData] = await Promise.all([
         mangakaApi.getSeriesDetail(id as string),
         mangakaApi.getChapters(id as string),
         mangakaApi.getContracts({ seriesId: id as string }),
-        mangakaApi.getAllSeriesNames(id as string),
         mangakaApi.getPublicationVersions(id as string),
         mangakaApi.getSeriesPayments(id as string),
       ]);
@@ -45,7 +44,6 @@ export default function SeriesDetailMangaka() {
       setSeries({ ...seriesData, signedCoverUrl: finalCoverUrl });
       setChapters(chaptersData?.items || chaptersData || []);
       setContracts(contractsData?.items || contractsData || []);
-      setSeriesNames(namesData?.items || namesData || []);
       setPublicationVersions(publicationsData?.items || publicationsData || []);
       setSeriesPayments(paymentsData?.items || paymentsData?.data || paymentsData || []);
     } catch (e) {
@@ -94,7 +92,7 @@ export default function SeriesDetailMangaka() {
           <View style={styles.headerInfo}>
             <Typography variant="h2" color={currentColors.text}>{series.title}</Typography>
             <View style={[styles.badge, { backgroundColor: currentColors.primary }]}>
-              <Typography variant="caption" color="#fff">{series.status}</Typography>
+              <Typography variant="caption" color="#fff">{translateSeriesStatus(series.status)}</Typography>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <UserCheck size={14} color={currentColors.textSecondary} />
@@ -159,9 +157,8 @@ export default function SeriesDetailMangaka() {
                 <Typography variant="body" color={currentColors.textSecondary} style={{ marginBottom: 16 }}>
                 {series.proposal?.synopsis || 'Chưa có tóm tắt.'}
               </Typography>
-              {(seriesNames.length > 0 || publicationVersions.length > 0 || seriesPayments.length > 0) && <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
-                <Typography variant="bodyBold">Name & phiên bản xuất bản</Typography>
-                {seriesNames.map((name: any, index: number) => <TouchableOpacity key={name.id || index} onPress={() => name.id && void mangakaApi.getSeriesName(id as string, name.id).then((detail) => Alert.alert('Name của series', detail?.title || detail?.status || 'Chi tiết Name'))}><Typography variant="caption" color={currentColors.primary}>Xem Name {name.title || index + 1}</Typography></TouchableOpacity>)}
+              {(publicationVersions.length > 0 || seriesPayments.length > 0) && <View style={[styles.actionBox, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
+                <Typography variant="bodyBold">Phiên bản xuất bản & thanh toán</Typography>
                 {publicationVersions.map((version: any, index: number) => <TouchableOpacity key={version.id || index} onPress={() => version.id && void mangakaApi.getPublicationVersion(version.id).then((detail) => Alert.alert('Phiên bản xuất bản', detail?.version || detail?.status || 'Chi tiết phiên bản'))}><Typography variant="caption" color={currentColors.primary}>Xem phiên bản xuất bản {version.versionNumber || index + 1}</Typography></TouchableOpacity>)}
                 {seriesPayments.length > 0 && <Typography variant="caption" color={currentColors.textSecondary}>{seriesPayments.length} khoản thanh toán theo series</Typography>}
               </View>}
@@ -223,7 +220,7 @@ export default function SeriesDetailMangaka() {
                           <>
                             <Clock size={14} color={currentColors.warning} />
                             <Typography variant="caption" color={currentColors.warning}>
-                              {chapter.status || 'Đang tiến hành'}
+                              {translateChapterStatus(chapter.status)}
                             </Typography>
                           </>
                         )}
@@ -231,9 +228,11 @@ export default function SeriesDetailMangaka() {
                     </View>
                     {chapter.status === 'PUBLISHED' ? (
                       <View style={{ alignItems: 'flex-end' }}>
-                        <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 4 }}>
-                          {chapter.views || 0} lượt xem
-                        </Typography>
+                        {(chapter.viewCount || chapter.views || chapter._count?.views) ? (
+                          <Typography variant="caption" color={currentColors.textSecondary} style={{ marginBottom: 4 }}>
+                            {chapter.viewCount || chapter.views || chapter._count?.views} lượt xem
+                          </Typography>
+                        ) : null}
                         <Button 
                           title="Xem" 
                           variant="outline" 
@@ -270,9 +269,9 @@ export default function SeriesDetailMangaka() {
                     onPress={() => router.push({ pathname: '/(mangaka-tabs)/series_stack/contract/[contractId]', params: { contractId: contract.id } })}
                   >
                     <View style={{ flex: 1 }}>
-                      <Typography variant="bodyBold">Hợp đồng: {contract.contractType}</Typography>
+                      <Typography variant="bodyBold">Hợp đồng: {translateContractType(contract.contractType)}</Typography>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <Typography variant="caption" color={currentColors.primary}>{contract.status}</Typography>
+                        <Typography variant="caption" color={currentColors.primary}>{translateContractStatus(contract.status)}</Typography>
                         <Typography variant="caption" color={currentColors.textSecondary}> • Cập nhật: {new Date(contract.updatedAt || contract.createdAt).toLocaleDateString()}</Typography>
                       </View>
                     </View>

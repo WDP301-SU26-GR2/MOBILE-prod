@@ -8,6 +8,7 @@ import { mangakaApi } from '../../../api/mangaka';
 import { colors } from '../../../theme/colors';
 import { Plus } from 'lucide-react-native';
 import { useThemeStore } from '../../../store/useThemeStore';
+import { translateSeriesStatus } from '../../../utils/statusTranslator';
 
 export default function MySeries() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function MySeries() {
       <View style={styles.cardContent}>
         <Typography variant="h3" numberOfLines={1}>{item.title}</Typography>
         <View style={[styles.badge, { backgroundColor: currentColors.primary }]}>
-          <Typography variant="caption" color="#fff">{item.status}</Typography>
+          <Typography variant="caption" color="#fff">{translateSeriesStatus(item.status)}</Typography>
         </View>
         <Typography variant="caption" color={currentColors.textSecondary}>
           {item._count?.chapters || item.chaptersCount || item.totalChapters || 0} Chương

@@ -8,6 +8,7 @@ import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ChevronLeft, DollarSign, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
+import { translatePaymentStatus } from '../../utils/statusTranslator';
 
 export default function EarningsScreen() {
   const router = useRouter();
@@ -51,18 +52,10 @@ export default function EarningsScreen() {
     return currentColors.textSecondary;
   };
 
-  const getStatusText = (status: string) => {
-    if (status === 'PAID') return 'Đã thanh toán';
-    if (status === 'TRIGGERED') return 'Đã chốt';
-    if (status === 'APPROVED') return 'Đã duyệt';
-    if (status === 'MISSED') return 'Trượt mốc';
-    return status;
-  };
-
   const showPayment = async (id: string) => {
     try {
       const payment = await mangakaApi.getPayment(id);
-      Alert.alert('Chi tiết thanh toán', [payment?.paymentType, payment?.status, payment?.amount != null ? formatVND(payment.amount) : null, payment?.note].filter(Boolean).join('\n'));
+      Alert.alert('Chi tiết thanh toán', [payment?.paymentType, translatePaymentStatus(payment?.status), payment?.amount != null ? formatVND(payment.amount) : null, payment?.note].filter(Boolean).join('\n'));
     } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
@@ -126,7 +119,7 @@ export default function EarningsScreen() {
                 <Typography variant="bodyBold">{payment.paymentType}</Typography>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
                   <Typography variant="caption" style={{ color: getStatusColor(payment.status) }}>
-                    {getStatusText(payment.status)}
+                    {translatePaymentStatus(payment.status)}
                   </Typography>
                   <Typography variant="caption" color={currentColors.textSecondary}>
                     • {new Date(payment.createdAt).toLocaleDateString()}

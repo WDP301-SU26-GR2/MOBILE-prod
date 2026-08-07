@@ -7,6 +7,7 @@ import { useThemeStore } from '../../../../store/useThemeStore';
 import { mangakaApi } from '../../../../api/mangaka';
 import { colors } from '../../../../theme/colors';
 import { ChevronLeft, Edit3, Image as ImageIcon, MessageSquare } from 'lucide-react-native';
+import { translateChapterStatus, translateStageCode } from '../../../../utils/statusTranslator';
 
 export default function ChapterDetail() {
   const { chapterId } = useLocalSearchParams();
@@ -50,7 +51,7 @@ export default function ChapterDetail() {
       }
     } catch (error: any) {
       console.log('Error fetching chapter detail', (error as any)?.message || "Unknown error");
-      Alert.alert('Lỗi', `Không thể tải dữ liệu Chapter: ${error?.response?.data?.message || error.message}`);
+      Alert.alert('Lỗi', `Không thể tải dữ liệu Chương: ${error?.response?.data?.message || error.message}`);
       setChapter(null);
     } finally {
       setLoading(false);
@@ -78,11 +79,11 @@ export default function ChapterDetail() {
             <ChevronLeft color={currentColors.text} size={28} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Typography variant="h2">Chi tiết Chapter</Typography>
+            <Typography variant="h2">Chi tiết Chương</Typography>
           </View>
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Typography color={currentColors.textSecondary}>Không tìm thấy thông tin Chapter.</Typography>
+          <Typography color={currentColors.textSecondary}>Không tìm thấy thông tin Chương.</Typography>
         </View>
       </SafeAreaView>
     );
@@ -96,9 +97,9 @@ export default function ChapterDetail() {
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Typography variant="h2" numberOfLines={1}>
-            {chapter?.chapterNumber ? `Ch. ${chapter.chapterNumber} - ` : ''}{chapter?.title || 'Chi tiết Chapter'}
+            {chapter?.chapterNumber ? `Chương ${chapter.chapterNumber} - ` : ''}{chapter?.title || 'Chi tiết Chương'}
           </Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Trạng thái: {chapter?.status || 'Chưa rõ'}</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Trạng thái: {translateChapterStatus(chapter?.status)}</Typography>
         </View>
       </View>
 
@@ -123,8 +124,8 @@ export default function ChapterDetail() {
 
         <Typography variant="h3" style={{ marginTop: 24, marginBottom: 12 }}>Quy trình làm việc</Typography>
         {production.stages?.length > 0 && <View style={[styles.productionCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
-          <Typography variant="bodyBold">Production stages</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>{production.stages.map((stage: any) => stage.name || stage.code || stage.status).filter(Boolean).join(' · ')}</Typography>
+          <Typography variant="bodyBold">Giai đoạn sản xuất</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>{production.stages.map((stage: any) => translateStageCode(stage.code || stage.name || stage.status)).filter(Boolean).join(' · ')}</Typography>
           <Typography variant="caption" color={currentColors.textSecondary}>{production.pages?.length ?? 0} trang · {production.regions?.length ?? 0} vùng · {production.jobs?.length ?? 0} AI job · {production.annotations?.length ?? 0} ghi chú</Typography>
         </View>}
         
@@ -134,7 +135,7 @@ export default function ChapterDetail() {
         >
           <Edit3 color={currentColors.primary} size={24} />
           <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold">Không gian làm Name</Typography>
+            <Typography variant="bodyBold">Không gian làm việc</Typography>
             <Typography variant="caption" color={currentColors.textSecondary}>Tải lên và duyệt các trang nháp</Typography>
           </View>
           <ChevronLeft color={currentColors.textSecondary} size={20} style={{ transform: [{ rotate: '180deg' }] }} />

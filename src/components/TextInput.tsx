@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput as RNTextInput, TextInputProps as RNTextInputProps, StyleSheet, Platform } from 'react-native';
+import { View, TextInput as RNTextInput, TextInputProps as RNTextInputProps, StyleSheet } from 'react-native';
 import { useThemeStore } from '../store/useThemeStore';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -49,7 +49,7 @@ export const TextInput: React.FC<TextInputProps> = ({
             {
               color: currentColors.text,
               fontSize: typography.sizes.body,
-              ...(Platform.OS === 'android' ? { fontFamily: typography.fonts.body } : {}),
+              fontFamily: typography.fonts.body,
             },
             style,
           ]}
@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
+    letterSpacing: 0,
   },
   leftIcon: {
     marginRight: 8,

@@ -49,7 +49,11 @@ export default function ReviewInbox() {
 
     if (type === 'task') {
       title = `Công việc: ${item.taskType}`;
-      description = `Chapter ${item.chapter?.chapterNumber || '?'}`;
+      if (item.referenceType?.startsWith('CHAPTER') || item.referenceType?.startsWith('MANUSCRIPT')) {
+        description = `Chương ${item.chapter?.chapterNumber || '?'}`;
+      } else {
+        description = `ID: ${item.id}`;
+      }
       icon = <CheckCircle color={currentColors.success} size={24} />;
       onPress = () => router.push({ pathname: '/(mangaka-tabs)/series_stack/review/[taskId]', params: { taskId: item.id } });
     } else if (type === 'revision') {

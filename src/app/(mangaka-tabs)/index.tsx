@@ -71,10 +71,10 @@ export default function MangakaHome() {
       )}
 
       <View style={styles.grid}>
-        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/studio')}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/series_stack')}>
           <BookOpen color={currentColors.primary} size={24} style={{ marginBottom: 8 }} />
           <Typography variant="h2">{data?.studio?.length || 0}</Typography>
-          <Typography variant="caption" color={currentColors.textSecondary}>Chapter Đang Làm</Typography>
+          <Typography variant="caption" color={currentColors.textSecondary}>Chương đang làm</Typography>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.card, { backgroundColor: currentColors.surface }]} onPress={() => router.push('/(mangaka-tabs)/inbox')}>
@@ -118,7 +118,7 @@ export default function MangakaHome() {
           <View style={styles.section}>
             <Typography variant="h3" style={{ marginBottom: 12 }}>Hạn Chót Gần Nhất</Typography>
             <View style={[styles.deadlineCard, { backgroundColor: currentColors.surface, borderLeftColor: currentColors.error }]}>
-              <Typography variant="bodyBold">{nearest.seriesTitle} - Ch. {nearest.chapterNumber}</Typography>
+              <Typography variant="bodyBold">{nearest.seriesTitle} - Chương {nearest.chapterNumber}</Typography>
               <Typography variant="body" color={currentColors.error}>Hạn: {new Date(nearest.deadline).toLocaleDateString()}</Typography>
             </View>
           </View>

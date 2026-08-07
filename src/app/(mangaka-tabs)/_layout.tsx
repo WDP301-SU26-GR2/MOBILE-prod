@@ -35,7 +35,7 @@ export default function MangakaTabsLayout() {
       <Tabs.Screen 
         name="studio" 
         options={{
-          title: 'Xưởng',
+          title: 'Cộng tác',
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />
         }} 
       />

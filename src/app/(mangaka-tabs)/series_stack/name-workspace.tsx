@@ -8,6 +8,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { ChevronLeft } from 'lucide-react-native';
 import { mangakaApi } from '../../../api/mangaka';
+import { translateStoryboardStatus } from '../../../utils/statusTranslator';
 
 export default function NameWorkspace() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function NameWorkspace() {
   const { theme } = useThemeStore();
   const currentColors = colors[theme];
   const [pages, setPages] = useState<any[]>([]);
-  const [nameInfo, setNameInfo] = useState<any>(null);
+  const [storyboardInfo, setStoryboardInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const lastUrlRenewal = useRef(0);
@@ -23,14 +24,14 @@ export default function NameWorkspace() {
   const fetchNameData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await mangakaApi.getChapterNames(chapterId as string);
+      const data = await mangakaApi.getChapterStoryboards(chapterId as string);
       if (data && data.items && data.items.length > 0) {
-        const firstName = await mangakaApi.getChapterName(chapterId as string, data.items[0].id).catch(() => data.items[0]);
-        setNameInfo(firstName);
+        const firstStoryboard = await mangakaApi.getChapterStoryboard(chapterId as string, data.items[0].id).catch(() => data.items[0]);
+        setStoryboardInfo(firstStoryboard);
         
         // Xin signed URL cho từng trang
         const pagesWithUrls = await Promise.all(
-          (firstName.pages || []).map(async (p: any) => {
+          (firstStoryboard.pages || []).map(async (p: any) => {
             let finalUrl = p.fileUrl;
             if (p.fileUrl && !p.fileUrl.startsWith('http')) {
               const signed = await mangakaApi.getSignedUrl(p.fileUrl);
@@ -41,7 +42,7 @@ export default function NameWorkspace() {
         );
         setPages(pagesWithUrls);
       } else {
-        setNameInfo(null);
+        setStoryboardInfo(null);
         setPages([]);
       }
     } catch (error) {
@@ -92,16 +93,19 @@ export default function NameWorkspace() {
           <ChevronLeft color={currentColors.text} size={28} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Typography variant="h2" numberOfLines={1}>Không gian làm Name</Typography>
+          <Typography variant="h2" numberOfLines={1}>Không gian làm việc</Typography>
           <Typography variant="body" color={currentColors.textSecondary} numberOfLines={1}>
-            Trạng thái: {nameInfo?.status || 'Chưa có Name'}
+            Trạng thái: {translateStoryboardStatus(storyboardInfo?.status)}
+          </Typography>
+          <Typography variant="caption" color={currentColors.textSecondary} style={{ fontSize: 11 }}>
+            (* Trạng thái phê duyệt kịch bản phân cảnh)
           </Typography>
         </View>
       </View>
 
-      {!nameInfo ? (
+      {!storyboardInfo ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Typography color={currentColors.textSecondary}>Chapter này chưa có Name nào.</Typography>
+          <Typography color={currentColors.textSecondary}>Chương này chưa có Storyboard nào.</Typography>
         </View>
       ) : (
         <FlatList
