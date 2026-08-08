@@ -33,11 +33,12 @@ apiClient.interceptors.request.use(
     const method = (config.method || 'get').toLowerCase();
     const isReadOnlyDownload = method === 'post' && (/^\/tasks\/[^/]+\/download-url$/.test(requestUrl) || requestUrl === '/uploads/sign-download');
     const isAuthSessionAction = method === 'post' && (requestUrl === '/auth/logout' || requestUrl === '/auth/change-password');
+    const isNotificationRead = method === 'patch' && (requestUrl === '/notifications/read-all' || /^\/notifications\/[^/]+\/read$/.test(requestUrl));
 
     // Mobile is intentionally a read-only companion for internal roles. Keep this
     // enforcement at the transport boundary so new screens cannot accidentally
     // call a state-changing endpoint.
-    if ((roleCode === 'MANGAKA' || roleCode === 'ASSISTANT') && method !== 'get' && !isReadOnlyDownload && !isAuthSessionAction) {
+    if ((roleCode === 'MANGAKA' || roleCode === 'ASSISTANT') && method !== 'get' && !isReadOnlyDownload && !isAuthSessionAction && !isNotificationRead) {
       return Promise.reject(new Error('This action is available on the web version only.'));
     }
     if (!isPublicRequest && accessToken && config.headers) {
@@ -121,7 +122,7 @@ apiClient.interceptors.response.use(
         processQueue(new Error('No refresh token'), null);
         useAuthStore.getState().logout();
         isRefreshing = false;
-        Alert.alert('Session Expired', 'Please log in again to continue.');
+        Alert.alert('Hết phiên đăng nhập', 'Vui lòng đăng nhập lại để tiếp tục.');
         router.replace('/(auth)/login');
       }
     }
@@ -132,7 +133,7 @@ apiClient.interceptors.response.use(
     
     if (backendCode === 'Error.RefreshTokenAlreadyUsed') {
       useAuthStore.getState().logout();
-      Alert.alert('Session Expired', 'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.');
+      Alert.alert('Hết phiên đăng nhập', 'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.');
       router.replace('/(auth)/login');
       return Promise.reject(error);
     }

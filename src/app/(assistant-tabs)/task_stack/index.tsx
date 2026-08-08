@@ -6,6 +6,7 @@ import { Typography } from '../../../components/Typography';
 import { assistantReadApi } from '../../../api/assistant';
 import { useThemeStore } from '../../../store/useThemeStore';
 import { colors } from '../../../theme/colors';
+import { translateTaskStatus, translateSpecialization } from '../../../utils/statusTranslator';
 
 const TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -31,8 +32,59 @@ export default function TaskListScreen() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
+      const assignments = await assistantReadApi.getAllStudioAssignments({ status: 'ACTIVE' }).catch(() => ({ items: [] }));
+      const allTasksMap = new Map();
+      
+      await Promise.all((assignments?.items || []).map(async (assignment: any) => {
+        if (!assignment.series?.id) return;
+        try {
+           const res = await assistantReadApi.getAllTasks({ seriesId: assignment.series.id });
+           (res?.items || []).forEach((task: any) => {
+               if (!allTasksMap.has(task.id)) {
+                  allTasksMap.set(task.id, {
+                     ...task,
+                     injectedSeriesTitle: assignment.series.title
+                  });
+               }
+           });
+        } catch {}
+      }));
+      
       const res = await assistantReadApi.getAllTasks();
-      setTasks(res?.items || []);
+      (res?.items || []).forEach((task: any) => {
+         if (!allTasksMap.has(task.id)) {
+             allTasksMap.set(task.id, task);
+         }
+      });
+      
+      const mergedTasks = Array.from(allTasksMap.values());
+
+      const itemsWithDetail = await Promise.all(mergedTasks.map(async (item: any) => {
+        try {
+          const detail = await assistantReadApi.getTask(item.id);
+          return { ...item, ...detail };
+        } catch { return item; }
+      }));
+      
+      itemsWithDetail.sort((a, b) => {
+        if (a.deadline && b.deadline) {
+          const diff = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+          if (diff !== 0) return diff;
+        } else if (a.deadline && !b.deadline) {
+          return -1;
+        } else if (!a.deadline && b.deadline) {
+          return 1;
+        }
+        
+        const priorityA = typeof a.priority === 'number' ? a.priority : 999;
+        const priorityB = typeof b.priority === 'number' ? b.priority : 999;
+        if (priorityA !== priorityB) {
+           return priorityA - priorityB;
+        }
+
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setTasks(itemsWithDetail);
     } catch (e) {
       console.error((e as any)?.message || "Unknown error");
     } finally {
@@ -63,6 +115,17 @@ export default function TaskListScreen() {
     const daysLeft = deadlineDate ? Math.floor((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
     const deadlineColor = daysLeft != null && daysLeft < 2 ? currentColors.error : daysLeft != null && daysLeft < 5 ? currentColors.warning : currentColors.textSecondary;
 
+    const seriesTitle = item.injectedSeriesTitle || item.groupTitle || item.seriesTitle || item.series?.title || item.page?.chapter?.series?.title || 'Truyện N/A';
+    
+    // Only show chapter if it exists, otherwise hide it or show groupTitle
+    const extractedChapter = item.chapterNumber || item.chapter?.chapterNumber || item.chapter?.number || item.page?.chapter?.chapterNumber || item.page?.chapter?.number;
+    
+    // If no chapter number but has group title (which is usually the chapter/group name), use it.
+    const chapterDisplay = extractedChapter ? `Chương ${extractedChapter}` : (item.groupTitle || `Trang ${item.page?.pageNumber ?? '?'}`);
+
+    const statusTranslated = translateTaskStatus(item.status);
+    const taskTypeTranslated = translateSpecialization(item.taskType);
+
     return (
       <TouchableOpacity 
         style={[styles.taskCard, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]} 
@@ -74,15 +137,17 @@ export default function TaskListScreen() {
         }}
       >
         <View style={styles.taskCardHeader}>
-          <Typography variant="bodyBold">{item.series?.title} - Chương {item.chapter?.chapterNumber}</Typography>
+          <Typography variant="bodyBold" numberOfLines={1} style={{ flex: 1, marginRight: 8 }}>
+            {seriesTitle}{extractedChapter || item.groupTitle ? ` - ${chapterDisplay}` : ''}
+          </Typography>
           <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) }]}>
             <Typography variant="caption" style={{ color: '#FFF' }}>
-              {item.status}{item.status === 'CANCELLED' && item.statusReason ? ' ℹ️' : ''}
+              {statusTranslated}{item.status === 'CANCELLED' && item.statusReason ? ' ℹ️' : ''}
             </Typography>
           </View>
         </View>
         <Typography variant="body" style={{ color: currentColors.textSecondary, marginBottom: 8 }}>
-          Loại: {item.taskType} | Trang {item.page?.pageNumber}
+          Loại: {taskTypeTranslated} | Trang {item.page?.pageNumber ?? '?'}
         </Typography>
         <Typography variant="caption" style={{ color: deadlineColor }}>
           Hạn chót: {deadlineDate ? deadlineDate.toLocaleDateString('vi-VN') : 'Chưa đặt'}

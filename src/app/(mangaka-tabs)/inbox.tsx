@@ -6,7 +6,7 @@ import { Typography } from '../../components/Typography';
 import { colors } from '../../theme/colors';
 import { useThemeStore } from '../../store/useThemeStore';
 import { mangakaApi } from '../../api/mangaka';
-import { X } from 'lucide-react-native';
+import { X, CheckCheck } from 'lucide-react-native';
 import { Button } from '../../components/Button';
 
 export default function MangakaInbox() {
@@ -38,7 +38,27 @@ export default function MangakaInbox() {
     return () => clearInterval(timer);
   }, [fetchNotifications]);
 
-  const handleAction = (item: any) => setSelectedNotification(item);
+  const handleMarkAllAsRead = async () => {
+    try {
+      setLoading(true);
+      await mangakaApi.markAllNotificationsAsRead();
+      await fetchNotifications(false);
+    } catch (e) {
+      console.log('Error marking all as read', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (item: any) => {
+    setSelectedNotification(item);
+    if (!item.isRead) {
+      try {
+        await mangakaApi.markNotificationAsRead(item.id);
+        void fetchNotifications(false);
+      } catch (e) {}
+    }
+  };
 
   const handleDeepLink = (item: any) => {
     setSelectedNotification(null);
@@ -121,8 +141,18 @@ export default function MangakaInbox() {
     <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Typography variant="h1">Thông báo</Typography>
-          <Typography variant="caption" color={unreadCount > 0 ? currentColors.primary : currentColors.textSecondary}>{unreadCount} chưa đọc · tự cập nhật</Typography>
+          <View style={{ flex: 1 }}>
+            <Typography variant="h1">Thông báo</Typography>
+            <View style={{ flexDirection: 'row', marginTop: 4, flexWrap: 'wrap' }}>
+               <Typography variant="caption" color={unreadCount > 0 ? currentColors.primary : currentColors.textSecondary}>{unreadCount} chưa đọc · tự cập nhật</Typography>
+            </View>
+          </View>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={handleMarkAllAsRead} style={[styles.markAllReadBtn, { borderColor: currentColors.primary, backgroundColor: theme === 'dark' ? '#1A2A3A' : '#F5F9FF' }]}>
+              <CheckCheck color={currentColors.primary} size={20} />
+              <Typography variant="caption" color={currentColors.primary} style={{ marginLeft: 4 }}>Đã đọc tất cả</Typography>
+            </TouchableOpacity>
+          )}
         </View>
         <FlatList
           data={notifications}
@@ -190,6 +220,7 @@ const styles = StyleSheet.create({
   headerRow: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   content: { flex: 1 },
   header: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  markAllReadBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
   list: { padding: 16, gap: 12 },
   card: {
     flexDirection: 'row',

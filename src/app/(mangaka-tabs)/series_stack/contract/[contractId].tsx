@@ -9,7 +9,7 @@ import { Button } from '../../../../components/Button';
 import { mangakaApi } from '../../../../api/mangaka';
 import { useThemeStore } from '../../../../store/useThemeStore';
 import { colors } from '../../../../theme/colors';
-import { translateContractStatus, translateContractType } from '../../../../utils/statusTranslator';
+import { translateContractStatus, translateContractType, translatePaymentStatus, translateConditionStatus } from '../../../../utils/statusTranslator';
 
 /** Contract approval, OTP signing, and amendments remain web-only. */
 export default function ContractDetailMangaka() {
@@ -76,7 +76,7 @@ export default function ContractDetailMangaka() {
       <View style={[styles.detail, { backgroundColor: currentColors.surface }]}>
         <Typography variant="bodyBold">Theo dõi hợp đồng</Typography>
         <Typography variant="caption" color={currentColors.textSecondary}>Trạng thái: {translateContractStatus(related.status?.status || contract.status) || '—'} · {related.versions?.length ?? 0} phiên bản · {related.amendments?.length ?? 0} phụ lục</Typography>
-        {related.conditions?.map((condition: any, index: number) => <Typography key={condition.id || index} variant="caption" color={currentColors.textSecondary} style={styles.line}>Điều kiện chi trả: {condition.name || condition.type || condition.status || `#${index + 1}`}</Typography>)}
+        {related.conditions?.map((condition: any, index: number) => <Typography key={condition.id || index} variant="caption" color={currentColors.textSecondary} style={styles.line}>Điều kiện chi trả: {condition.status ? translateConditionStatus(condition.status) : (condition.name || condition.type || `#${index + 1}`)}</Typography>)}
         {related.versions?.map((version: any, index: number) => <TouchableOpacity key={version.id || index} onPress={() => version.id && router.push({ pathname: '/(mangaka-tabs)/series_stack/contract/version/[versionId]', params: { contractId, versionId: version.id } })} style={[styles.linkRow, { borderColor: currentColors.border }]}><Typography variant="caption" color={currentColors.primary}>Xem phiên bản {version.versionNumber ?? index + 1}</Typography></TouchableOpacity>)}
         {related.amendments?.map((amendment: any, index: number) => <TouchableOpacity key={amendment.id || index} onPress={() => amendment.id && void mangakaApi.getContractAmendment(contractId, amendment.id).then((detail) => Alert.alert('Phụ lục', detail?.title || detail?.status || 'Chi tiết phụ lục'))} style={[styles.linkRow, { borderColor: currentColors.border }]}><Typography variant="caption" color={currentColors.primary}>Xem phụ lục {index + 1}</Typography></TouchableOpacity>)}
         <Typography variant="caption" color={currentColors.textSecondary} style={styles.line}>{related.payments?.length ?? 0} khoản thanh toán liên quan</Typography>

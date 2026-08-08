@@ -6,7 +6,7 @@ import { Typography } from '../../components/Typography';
 import { mangakaApi } from '../../api/mangaka';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
-import { translateCollaboratorStatus } from '../../utils/statusTranslator';
+import { translateCollaboratorStatus, translateSpecialization } from '../../utils/statusTranslator';
 
 export default function StudioScreen() {
   const theme = useThemeStore((state) => state.theme);
@@ -31,14 +31,21 @@ export default function StudioScreen() {
     try {
       const detail = tab === 'INVITES' ? await mangakaApi.getCollaborationInvite(item.id) : await mangakaApi.getStudioAssignment(item.id);
       const taskTypes = tab === 'INVITES' ? detail?.taskTypes : detail?.assignedTaskTypes;
-      Alert.alert(tab === 'INVITES' ? 'Chi tiết lời mời' : 'Chi tiết cộng tác', [detail?.series?.title, detail?.status, taskTypes?.join(', ')].filter(Boolean).join('\n'));
+      const personName = item.assistant?.displayName || item.mangaka?.displayName || item.user?.displayName;
+      const fields = [
+        personName ? `Thành viên: ${personName}` : null,
+        detail?.series?.title ? `Truyện: ${detail.series.title}` : null,
+        detail?.status ? `Trạng thái: ${translateCollaboratorStatus(detail.status)}` : null,
+        taskTypes?.length ? `Công việc: ${taskTypes.map(translateSpecialization).join(', ')}` : null,
+      ].filter(Boolean);
+      Alert.alert(tab === 'INVITES' ? 'Chi tiết lời mời' : 'Chi tiết cộng tác', fields.join('\n'));
     } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
   return <SafeAreaView style={[styles.container, { backgroundColor: currentColors.background }]}>
     <View style={styles.header}><Typography variant="h1">Cộng tác</Typography><Typography variant="caption" color={currentColors.textSecondary}>Chỉ xem trên mobile</Typography></View>
     <View style={styles.tabs}>{(['INVITES', 'ASSIGNMENTS'] as const).map((item) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={[styles.tab, tab === item && { borderBottomColor: currentColors.primary, borderBottomWidth: 2 }]}><Typography variant="bodyBold" color={tab === item ? currentColors.primary : currentColors.textSecondary}>{item === 'INVITES' ? 'Lời mời' : 'Cộng tác'}</Typography></TouchableOpacity>)}</View>
-    <FlatList data={data} keyExtractor={(item) => item.id} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />} contentContainerStyle={styles.list} ListHeaderComponent={<View style={[styles.notice, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}><Monitor size={18} color={currentColors.primary} /><Typography variant="caption" color={currentColors.textSecondary} style={{ flex: 1 }}>Mời, huỷ lời mời, đổi vai trò và chấm dứt cộng tác thực hiện trên bản web.</Typography></View>} ListEmptyComponent={loading ? <ActivityIndicator color={currentColors.primary} style={{ marginTop: 32 }} /> : <Typography align="center" color={currentColors.textSecondary} style={{ marginTop: 32 }}>Không có dữ liệu.</Typography>} renderItem={({ item }) => <TouchableOpacity onPress={() => void showDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}><View style={styles.row}><Typography variant="bodyBold">{item.assistant?.displayName || item.mangaka?.displayName || item.user?.displayName || 'Thành viên studio'}</Typography><Typography variant="caption" color={currentColors.primary}>{translateCollaboratorStatus(item.status)}</Typography></View><Typography variant="body" color={currentColors.textSecondary} style={{ marginTop: 6 }}>{item.series?.title || item.role || item.taskTypes?.join(', ') || '—'}</Typography>{(item.hireStart || item.hireEnd) && <Typography variant="caption" color={currentColors.textSecondary} style={{ marginTop: 8 }}>Thời hạn: {item.hireStart ? new Date(item.hireStart).toLocaleDateString('vi-VN') : '—'} — {item.hireEnd ? new Date(item.hireEnd).toLocaleDateString('vi-VN') : '—'}</Typography>}</TouchableOpacity>} />
+    <FlatList data={data} keyExtractor={(item) => item.id} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />} contentContainerStyle={styles.list} ListHeaderComponent={<View style={[styles.notice, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}><Monitor size={18} color={currentColors.primary} /><Typography variant="caption" color={currentColors.textSecondary} style={{ flex: 1 }}>Mời, huỷ lời mời, đổi vai trò và chấm dứt cộng tác thực hiện trên bản web.</Typography></View>} ListEmptyComponent={loading ? <ActivityIndicator color={currentColors.primary} style={{ marginTop: 32 }} /> : <Typography align="center" color={currentColors.textSecondary} style={{ marginTop: 32 }}>Không có dữ liệu.</Typography>} renderItem={({ item }) => <TouchableOpacity onPress={() => void showDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}><View style={styles.row}><Typography variant="bodyBold">{item.assistant?.displayName || item.mangaka?.displayName || item.user?.displayName || 'Thành viên studio'}</Typography><Typography variant="caption" color={currentColors.primary}>{translateCollaboratorStatus(item.status)}</Typography></View><Typography variant="body" color={currentColors.textSecondary} style={{ marginTop: 6 }}>{item.series?.title || item.role || item.taskTypes?.map(translateSpecialization).join(', ') || item.assignedTaskTypes?.map(translateSpecialization).join(', ') || '—'}</Typography>{(item.hireStart || item.hireEnd) && <Typography variant="caption" color={currentColors.textSecondary} style={{ marginTop: 8 }}>Thời hạn: {item.hireStart ? new Date(item.hireStart).toLocaleDateString('vi-VN') : '—'} — {item.hireEnd ? new Date(item.hireEnd).toLocaleDateString('vi-VN') : '—'}</Typography>}</TouchableOpacity>} />
   </SafeAreaView>;
 }
 

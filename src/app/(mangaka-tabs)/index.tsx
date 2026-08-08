@@ -21,7 +21,7 @@ export default function MangakaHome() {
       const [dashData, overview] = await Promise.all([mangakaApi.getMangakaDashboard(), mangakaApi.getOverview()]);
       setData({ ...dashData, overview });
     } catch (e) {
-      console.log('Error fetching overview', (e as any)?.message || "Unknown error");
+      console.log('Error fetching overview', e, (e as any)?.response?.data);
       setData(null);
     } finally {
       setLoading(false);

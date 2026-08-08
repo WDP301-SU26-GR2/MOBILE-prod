@@ -321,7 +321,7 @@ export default function PublicRanking() {
                     ]}
                   >
                     <Typography variant="caption" color={selected ? currentColors.primaryForeground : currentColors.text}>
-                      Kỳ #{period.issueNumber ?? period.reflectedIssueNumber ?? '—'}
+                      Kỳ #{period.reflectedIssueNumber ?? period.issueNumber ?? '—'}
                     </Typography>
                   </TouchableOpacity>
                 );
@@ -469,7 +469,7 @@ export default function PublicRanking() {
     const title = mode === 'LATEST'
       ? 'Kết quả mới nhất'
       : mode === 'HISTORY'
-        ? `Kỳ #${selectedPeriod?.issueNumber ?? selectedPeriod?.reflectedIssueNumber ?? '—'}`
+        ? `Kỳ #${selectedPeriod?.reflectedIssueNumber ?? selectedPeriod?.issueNumber ?? '—'}`
         : aggregateLevel === 'YEAR'
           ? `Tổng hợp năm ${selectedYear}`
           : `Tổng hợp tháng ${selectedMonth}/${selectedYear}`;

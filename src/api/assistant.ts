@@ -29,4 +29,6 @@ export const assistantReadApi = {
   getAllRevisionRequests: async (params?: any) => collectAllPages(async (page) => (await apiClient.get('/revision-requests', { params: page })).data?.data, params),
   getNotifications: async (params?: any) => (await apiClient.get('/notifications', { params })).data?.data,
   getAllNotifications: async (params?: any) => collectAllPages(async (page) => (await apiClient.get('/notifications', { params: page })).data?.data, params),
+  markNotificationAsRead: async (id: string) => (await apiClient.patch(`/notifications/${id}/read`)).data,
+  markAllNotificationsAsRead: async () => (await apiClient.patch('/notifications/read-all')).data,
 };

@@ -117,7 +117,7 @@ export default function PublicHome() {
           </View>
           <View style={styles.loginCopy}>
             <Typography variant="label" color={currentColors.primary}>KHU SÁNG TÁC</Typography>
-            <Typography variant="caption" color={currentColors.textSecondary}>Mangaka • Assistant • Editor</Typography>
+            <Typography variant="caption" color={currentColors.textSecondary}>Mangaka • Assistant</Typography>
           </View>
           <LogIn size={17} color={currentColors.primary} />
         </TouchableOpacity>

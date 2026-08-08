@@ -8,6 +8,7 @@ import { Typography } from '../../../../components/Typography';
 import { mangakaApi } from '../../../../api/mangaka';
 import { useThemeStore } from '../../../../store/useThemeStore';
 import { colors } from '../../../../theme/colors';
+import { translatePageStatus } from '../../../../utils/statusTranslator';
 
 type Page = { id: string; pageNumber?: number; status?: string; originalFile?: string; compositeFile?: string; displayFile?: string };
 
@@ -64,7 +65,7 @@ export default function ChapterPagesScreen() {
       ListEmptyComponent={loading ? <ActivityIndicator color={currentColors.primary} style={{ marginTop: 32 }} /> : <Typography variant="body" color={currentColors.textSecondary} style={styles.empty}>Chương này chưa có trang nào.</Typography>}
       renderItem={({ item }) => <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
         {urls[item.id] ? <Image source={{ uri: urls[item.id] }} style={styles.image} contentFit="contain" onError={renewExpiredUrls} /> : <View style={[styles.image, styles.placeholder, { backgroundColor: currentColors.background }]}><Typography variant="caption" color={currentColors.textSecondary}>Không có ảnh xem trước</Typography></View>}
-        <View style={styles.meta}><Typography variant="bodyBold">Trang {item.pageNumber ?? '—'}</Typography><Typography variant="caption" color={currentColors.textSecondary}>{item.status || '—'}</Typography></View>
+        <View style={styles.meta}><Typography variant="bodyBold">Trang {item.pageNumber ?? '—'}</Typography><Typography variant="caption" color={currentColors.textSecondary}>{translatePageStatus(item.status)}</Typography></View>
       </View>}
     />
   </SafeAreaView>;

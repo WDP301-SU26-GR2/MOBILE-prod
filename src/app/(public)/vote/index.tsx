@@ -211,7 +211,7 @@ export default function VoteIndexScreen() {
                   variant="caption"
                   color={selected ? currentColors.primaryForeground : currentColors.textSecondary}
                 >
-                  {TYPE_LABELS[item.publicationType as VoteType]} · Kỳ #{item.issueNumber ?? item.number ?? '—'}
+                  {TYPE_LABELS[item.publicationType as VoteType]} · Kỳ #{item.reflectedIssueNumber ?? item.issueNumber ?? item.number ?? '—'}
                   {selectionCount ? ` · ${selectionCount} đã chọn` : ''}
                 </Typography>
               </TouchableOpacity>
@@ -236,7 +236,7 @@ export default function VoteIndexScreen() {
           </View>
           <View style={styles.summaryCopy}>
             <Typography variant="label" color={currentColors.primary}>KỲ ĐANG MỞ</Typography>
-            <Typography variant="h2">Kỳ #{activePeriod?.number ?? '—'}</Typography>
+            <Typography variant="h2">Kỳ #{activePeriod?.reflectedIssueNumber ?? activePeriod?.issueNumber ?? activePeriod?.number ?? '—'}</Typography>
           </View>
           <View style={[styles.typeBadge, { backgroundColor: `${currentColors.primary}18` }]}>
             <Typography variant="caption" color={currentColors.primary}>

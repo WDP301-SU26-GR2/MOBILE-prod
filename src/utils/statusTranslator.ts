@@ -56,11 +56,49 @@ export const PAYMENT_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã duyệt',
 };
 
+export const PAYMENT_TYPE_MAP: Record<string, string> = {
+  RECURRING_CHAPTER: 'Thù lao mỗi chương',
+  ROYALTY: 'Nhuận bút',
+  ADVANCE: 'Tạm ứng',
+  ONETIME_BONUS: 'Thưởng một lần',
+  MILESTONE_BONUS: 'Thưởng đạt mốc',
+  PENALTY: 'Phạt vi phạm',
+  SUBSCRIPTION_SHARE: 'Chia sẻ doanh thu',
+};
+
 export const TASK_STATUS_MAP: Record<string, string> = {
+  PENDING: 'Đang chờ',
+  ASSIGNED: 'Đã giao',
+  IN_PROGRESS: 'Đang làm',
+  SUBMITTED: 'Đã nộp',
+  REVISION_REQUESTED: 'Yêu cầu sửa',
+  APPROVED: 'Đã duyệt',
+  COMPLETED: 'Đã hoàn thành',
+  CANCELLED: 'Đã huỷ',
+};
+
+export const PAGE_STATUS_MAP: Record<string, string> = {
+  DRAFT: 'Bản nháp',
   PENDING: 'Đang chờ',
   IN_PROGRESS: 'Đang thực hiện',
   COMPLETED: 'Đã hoàn thành',
+  REVISION_REQUIRED: 'Cần chỉnh sửa',
+  APPROVED: 'Đã duyệt',
+};
+
+export const CONDITION_STATUS_MAP: Record<string, string> = {
+  PENDING: 'Đang chờ',
+  MET: 'Đã đạt',
   CANCELLED: 'Đã huỷ',
+};
+
+export const SPECIALIZATION_MAP: Record<string, string> = {
+  BACKGROUND: 'Vẽ nền',
+  SCREENTONE: 'Dán tone',
+  EFFECT_LINES: 'Hiệu ứng đường',
+  COLORING: 'Tô màu',
+  LETTERING: 'Chèn thoại',
+  INKING: 'Đi nét',
 };
 
 export const REQUEST_STATUS_MAP: Record<string, string> = {
@@ -97,3 +135,7 @@ export const translateTaskStatus = (status: string | undefined | null) => status
 export const translateRequestStatus = (status: string | undefined | null) => status ? (REQUEST_STATUS_MAP[status] || status) : 'Chưa rõ';
 export const translateStoryboardStatus = (status: string | undefined | null) => status ? (STORYBOARD_STATUS_MAP[status] || status) : 'Chưa rõ';
 export const translateCollaboratorStatus = (status: string | undefined | null) => status ? (COLLABORATOR_STATUS_MAP[status] || status) : 'Chưa rõ';
+export const translatePageStatus = (status: string | undefined | null) => status ? (PAGE_STATUS_MAP[status] || status) : 'Chưa rõ';
+export const translateConditionStatus = (status: string | undefined | null) => status ? (CONDITION_STATUS_MAP[status] || status) : 'Chưa rõ';
+export const translateSpecialization = (spec: string | undefined | null) => spec ? (SPECIALIZATION_MAP[spec] || spec) : 'Chưa rõ';
+export const translatePaymentType = (type: string | undefined | null) => type ? (PAYMENT_TYPE_MAP[type] || type) : 'Chưa rõ';

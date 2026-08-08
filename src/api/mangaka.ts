@@ -18,6 +18,8 @@ export const mangakaApi = {
 
   getNotifications: async (params?: { limit?: number }) => (await apiClient.get('/notifications', { params })).data?.data,
   getAllNotifications: async (params?: any) => collectAllPages(async (page) => (await apiClient.get('/notifications', { params: page })).data?.data, params),
+  markNotificationAsRead: async (id: string) => (await apiClient.patch(`/notifications/${id}/read`)).data,
+  markAllNotificationsAsRead: async () => (await apiClient.patch('/notifications/read-all')).data,
   getContracts: async (params?: any) => (await apiClient.get('/contracts', { params })).data?.data,
   getContract: async (id: string) => (await apiClient.get(`/contracts/${id}`)).data?.data,
   getContractVersions: async (id: string) => (await apiClient.get(`/contracts/${id}/versions`)).data?.data,
@@ -79,6 +81,7 @@ export const mangakaApi = {
   getMangakas: async (params?: any) => (await apiClient.get('/mangakas', { params })).data?.data,
   getAllMangakas: async (params?: any) => collectAllPages(async (page) => (await apiClient.get('/mangakas', { params: page })).data?.data, params),
   getBoardRankings: async (surveyPeriodId: string) => (await apiClient.get('/rankings/board', { params: { surveyPeriodId } })).data?.data,
+  getSurveyPeriods: async (params?: any) => (await apiClient.get('/survey-periods', { params })).data?.data,
   // Spec 30+31: Series Requests
   getSeriesRequests: async (params?: { seriesId?: string; status?: string; requestType?: string; limit?: number; offset?: number }) => (await apiClient.get('/series-requests', { params })).data?.data,
   getAllSeriesRequests: async (params?: { seriesId?: string; status?: string; requestType?: string }) => collectAllPages(async (page) => (await apiClient.get('/series-requests', { params: page })).data?.data, params),

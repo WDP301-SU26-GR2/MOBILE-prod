@@ -135,8 +135,7 @@ export default function ChapterDetail() {
         >
           <Edit3 color={currentColors.primary} size={24} />
           <View style={{ flex: 1 }}>
-            <Typography variant="bodyBold">Không gian làm việc</Typography>
-            <Typography variant="caption" color={currentColors.textSecondary}>Tải lên và duyệt các trang nháp</Typography>
+            <Typography variant="bodyBold">Bản phác thảo khung truyện</Typography>
           </View>
           <ChevronLeft color={currentColors.textSecondary} size={20} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>

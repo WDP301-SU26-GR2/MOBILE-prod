@@ -10,6 +10,7 @@ import { useThemeStore } from '../../../store/useThemeStore';
 import { colors } from '../../../theme/colors';
 import { ArrowLeft } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
+import { translateTaskStatus, translateSpecialization } from '../../../utils/statusTranslator';
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -126,14 +127,17 @@ export default function TaskDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16 }}>
           <ArrowLeft color={currentColors.text} size={24} />
         </TouchableOpacity>
-        <Typography variant="h2">{task.taskType}</Typography>
+        <Typography variant="h2">{translateSpecialization(task.taskType)}</Typography>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Info Card */}
         <View style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
-          <Typography variant="h3">Nhiệm vụ {task.taskType}</Typography>
+          <Typography variant="h3">Nhiệm vụ {translateSpecialization(task.taskType)}</Typography>
           <Typography variant="caption" color={currentColors.textSecondary}>Trang nguồn: {task.pageId || '—'}</Typography>
+          {task.groupTitle && (
+            <Typography variant="caption" color={currentColors.textSecondary} style={{ marginTop: 2 }}>Nhóm: {task.groupTitle}</Typography>
+          )}
           <Typography variant="body" style={{ color: currentColors.textSecondary, marginTop: 4 }}>
             Độ ưu tiên: <Typography variant="bodyBold" style={{ color: getPriorityColor(task.priority) }}>{task.priority}</Typography>
           </Typography>
@@ -177,7 +181,7 @@ export default function TaskDetailScreen() {
         {/* Mobile is a read-only companion. Task transitions and uploads stay on web. */}
         <View style={styles.actionSection}>
           <View style={[styles.banner, { backgroundColor: currentColors.background, borderColor: currentColors.border, borderWidth: 1 }]}>
-            <Typography variant="bodyBold">Trạng thái: {task.status}</Typography>
+            <Typography variant="bodyBold">Trạng thái: {translateTaskStatus(task.status)}</Typography>
             <Typography variant="caption" color={currentColors.textSecondary}>Bắt đầu, nộp kết quả hoặc yêu cầu sửa được thực hiện trên bản web.</Typography>
           </View>
           {task.status === 'SUBMITTED' && (

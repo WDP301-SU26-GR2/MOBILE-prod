@@ -35,15 +35,18 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     try {
       setLoading(true);
-      const payload = {
+      const dataToSubmit = {
         ...formData,
+        email: formData.email.trim(),
         displayName: formData.displayName || formData.name
       };
-      await authApi.register(payload);
-      router.push({
-        pathname: '/(auth)/verify',
-        params: { email: formData.email }
-      });
+      const res = await authApi.register(dataToSubmit);
+      if (res.success) {
+        router.push({
+          pathname: '/(auth)/verify',
+          params: { email: formData.email.trim() }
+        } as any);
+      }
     } catch (error: any) {
       const errRes = error.response?.data;
       if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {

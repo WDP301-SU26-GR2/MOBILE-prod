@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen() {
 
     try {
       setLoading(true);
-      await authApi.sendOtpEmail({ email, purpose: 'FORGOT_PASSWORD' });
+      await authApi.sendOtpEmail({ email: email.trim(), purpose: 'FORGOT_PASSWORD' });
       Alert.alert('Mã OTP đã được gửi', `Chúng tôi đã gửi mã xác nhận OTP đến ${email}. Vui lòng kiểm tra hộp thư.`);
       setStep('reset');
     } catch (error: any) {

@@ -33,7 +33,7 @@ export default function LoginScreen() {
     }
     try {
       setLoading(true);
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({ email: email.trim(), password });
       if (res.success && res.data) {
         const userRole = typeof res.data.user.role === 'string' ? res.data.user.role : res.data.user.role?.code;
         const sessionUser = { ...res.data.user, mustChangePassword: res.data.mustChangePassword };
@@ -49,7 +49,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      console.log('Login failed', (error as any)?.message || "Unknown error");
+      console.log('Login failed', error, (error as any)?.response?.data);
       const errRes = error.response?.data;
       if (errRes?.code === 'Error.ValidationFailed' && errRes.errors) {
         const newErrors: Record<string, string> = {};
@@ -90,7 +90,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      console.log('Google login api call failed', (error as any)?.message || "Unknown error");
+      console.log('Google login api call failed', error, (error as any)?.response?.data);
       Alert.alert('Lỗi Đăng nhập', error.response?.data?.message || 'Đăng nhập Google thất bại.');
     } finally {
       setLoading(false);

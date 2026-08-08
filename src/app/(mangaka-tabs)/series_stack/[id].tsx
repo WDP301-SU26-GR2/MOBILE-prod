@@ -97,7 +97,7 @@ export default function SeriesDetailMangaka() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <UserCheck size={14} color={currentColors.textSecondary} />
               <Typography variant="caption" color={currentColors.textSecondary}>
-                Editor phụ trách: {series.editor ? series.editor.displayName : 'Đang chờ Editor nhận'}
+                Biên tập viên: {series.editor ? series.editor.displayName : 'Đang chờ Biên tập viên nhận'}
               </Typography>
             </View>
           </View>

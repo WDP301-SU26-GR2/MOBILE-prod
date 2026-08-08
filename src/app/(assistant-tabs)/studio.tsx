@@ -6,6 +6,7 @@ import { Typography } from '../../components/Typography';
 import { assistantReadApi } from '../../api/assistant';
 import { useThemeStore } from '../../store/useThemeStore';
 import { colors } from '../../theme/colors';
+import { translateCollaboratorStatus, translateSpecialization } from '../../utils/statusTranslator';
 
 export default function StudioScreen() {
   const [activeTab, setActiveTab] = useState<'INVITES' | 'COLLABS'>('INVITES');
@@ -19,7 +20,13 @@ export default function StudioScreen() {
   const fetchInvites = useCallback(async () => {
     try {
       const res = await assistantReadApi.getAllCollaborationInvites();
-      setInvites(res?.items || []);
+      const itemsWithDetail = await Promise.all((res?.items || []).map(async (item: any) => {
+        try {
+          const detail = await assistantReadApi.getCollaborationInvite(item.id);
+          return { ...item, taskTypes: detail?.taskTypes || detail?.assignedTaskTypes || item.taskTypes || item.assignedTaskTypes };
+        } catch { return item; }
+      }));
+      setInvites(itemsWithDetail);
     } catch (e) {
       console.error((e as any)?.message || "Unknown error");
     }
@@ -28,7 +35,13 @@ export default function StudioScreen() {
   const fetchCollabs = useCallback(async () => {
     try {
       const res = await assistantReadApi.getAllStudioAssignments();
-      setCollabs(res?.items || []);
+      const itemsWithDetail = await Promise.all((res?.items || []).map(async (item: any) => {
+        try {
+          const detail = await assistantReadApi.getStudioAssignment(item.id);
+          return { ...item, assignedTaskTypes: detail?.assignedTaskTypes || detail?.taskTypes || item.assignedTaskTypes || item.taskTypes };
+        } catch { return item; }
+      }));
+      setCollabs(itemsWithDetail);
     } catch (e) {
       console.error((e as any)?.message || "Unknown error");
     }
@@ -47,33 +60,49 @@ export default function StudioScreen() {
   const showInviteDetail = async (item: any) => {
     try {
       const detail = await assistantReadApi.getCollaborationInvite(item.id);
-      Alert.alert('Chi tiết lời mời', [detail?.series?.title || item.series?.title, detail?.taskTypes?.join(', '), detail?.note || detail?.message].filter(Boolean).join('\n'));
+      const title = detail?.series?.title || item.series?.title || item.series?.titleVn;
+      const tasks = (detail?.taskTypes || item.taskTypes)?.map(translateSpecialization).join(', ') || (detail?.assignedTaskTypes || item.assignedTaskTypes)?.map(translateSpecialization).join(', ');
+      const note = detail?.note || detail?.message;
+      
+      Alert.alert('Chi tiết lời mời', [
+        title ? `Truyện: ${title}` : null,
+        tasks ? `Công việc: ${tasks}` : null,
+        note ? `Ghi chú: ${note}` : null
+      ].filter(Boolean).join('\n'));
     } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
   const showAssignmentDetail = async (item: any) => {
     try {
       const detail = await assistantReadApi.getStudioAssignment(item.id);
-      Alert.alert('Chi tiết cộng tác', [detail?.series?.title || item.series?.title, detail?.status, detail?.assignedTaskTypes?.join(', ')].filter(Boolean).join('\n'));
+      const title = detail?.series?.title || item.series?.title || item.series?.titleVn;
+      const status = translateCollaboratorStatus(detail?.status || item.status);
+      const tasks = (detail?.assignedTaskTypes || item.assignedTaskTypes || detail?.taskTypes || item.taskTypes)?.map(translateSpecialization).join(', ');
+      
+      Alert.alert('Chi tiết cộng tác', [
+        title ? `Truyện: ${title}` : null,
+        status ? `Trạng thái: ${status}` : null,
+        tasks ? `Công việc: ${tasks}` : null
+      ].filter(Boolean).join('\n'));
     } catch { Alert.alert('Không thể tải chi tiết', 'Vui lòng thử lại.'); }
   };
 
   const renderInviteItem = ({ item }: { item: any }) => (
     <TouchableOpacity onPress={() => void showInviteDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
       <View style={styles.row}>
-        <Image source={{ uri: item.mangaka?.avatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
+        <Image source={{ uri: item.mangaka?.avatar || item.mangaka?.avatarUrl || item.user?.avatar || item.user?.avatarUrl || 'https://via.placeholder.com/40' }} style={styles.avatar} />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Typography variant="bodyBold">{item.mangaka?.displayName}</Typography>
-          <Typography variant="body" style={{ color: currentColors.textSecondary }}>{item.series?.title}</Typography>
+          <Typography variant="bodyBold">{item.mangaka?.displayName || item.user?.displayName || 'Thành viên'}</Typography>
+          <Typography variant="body" style={{ color: currentColors.textSecondary }}>{item.series?.title || item.series?.titleVn}</Typography>
         </View>
-        <Typography variant="caption" style={{ color: currentColors.primary }}>{item.status}</Typography>
+        <Typography variant="caption" style={{ color: currentColors.primary }}>{translateCollaboratorStatus(item.status)}</Typography>
       </View>
       <View style={{ marginTop: 12 }}>
         <Typography variant="caption" style={{ color: currentColors.textSecondary }}>
-          Thời gian: {new Date(item.hireStart).toLocaleDateString('vi-VN')} - {new Date(item.hireEnd).toLocaleDateString('vi-VN')}
+          Thời gian: {item.hireStart ? new Date(item.hireStart).toLocaleDateString('vi-VN') : '—'} - {item.hireEnd ? new Date(item.hireEnd).toLocaleDateString('vi-VN') : '—'}
         </Typography>
         <Typography variant="caption" style={{ color: currentColors.textSecondary, marginTop: 4 }}>
-          Công việc: {item.taskTypes?.join(', ') || 'N/A'}
+          Công việc: {item.taskTypes?.map(translateSpecialization).join(', ') || item.assignedTaskTypes?.map(translateSpecialization).join(', ') || 'N/A'}
         </Typography>
       </View>
       
@@ -93,23 +122,26 @@ export default function StudioScreen() {
     return (
       <TouchableOpacity onPress={() => void showAssignmentDetail(item)} style={[styles.card, { backgroundColor: currentColors.surface, borderColor: currentColors.border }]}>
         <View style={styles.row}>
-          <Image source={{ uri: item.mangaka?.avatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
+          <Image source={{ uri: item.mangaka?.avatar || item.mangaka?.avatarUrl || item.user?.avatar || item.user?.avatarUrl || 'https://via.placeholder.com/40' }} style={styles.avatar} />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Typography variant="bodyBold">{item.mangaka?.displayName}</Typography>
-            <Typography variant="body" style={{ color: currentColors.textSecondary }}>{item.series?.title}</Typography>
+            <Typography variant="bodyBold">{item.mangaka?.displayName || item.user?.displayName || 'Thành viên'}</Typography>
+            <Typography variant="body" style={{ color: currentColors.textSecondary }}>{item.series?.title || item.series?.titleVn}</Typography>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Typography variant="caption" style={{ 
               color: item.status === 'ACTIVE' ? currentColors.success : item.status === 'TERMINATED' ? currentColors.error : currentColors.textSecondary 
             }}>
-              {item.status}
+              {translateCollaboratorStatus(item.status)}
             </Typography>
             {isExpired && <Typography variant="caption" style={{ color: currentColors.error }}>Đã hết hạn</Typography>}
           </View>
         </View>
         <View style={{ marginTop: 12 }}>
           <Typography variant="caption" style={{ color: currentColors.textSecondary }}>
-            Hợp đồng: {new Date(item.hireStart).toLocaleDateString('vi-VN')} - {new Date(item.hireEnd).toLocaleDateString('vi-VN')}
+            Hợp đồng: {item.hireStart ? new Date(item.hireStart).toLocaleDateString('vi-VN') : '—'} - {item.hireEnd ? new Date(item.hireEnd).toLocaleDateString('vi-VN') : '—'}
+          </Typography>
+          <Typography variant="caption" style={{ color: currentColors.textSecondary, marginTop: 4 }}>
+            Công việc: {item.taskTypes?.map(translateSpecialization).join(', ') || item.assignedTaskTypes?.map(translateSpecialization).join(', ') || 'N/A'}
           </Typography>
         </View>
       </TouchableOpacity>

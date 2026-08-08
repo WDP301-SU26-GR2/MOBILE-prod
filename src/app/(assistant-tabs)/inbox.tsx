@@ -5,7 +5,7 @@ import { Typography } from '../../components/Typography';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/Button';
 import { assistantReadApi } from '../../api/assistant';
-import { X } from 'lucide-react-native';
+import { X, CheckCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function AssistantInbox() {
@@ -29,7 +29,25 @@ export default function AssistantInbox() {
     }
   }, []);
 
-  const handleAction = (item: any) => {
+  const handleMarkAllAsRead = async () => {
+    try {
+      setLoading(true);
+      await assistantReadApi.markAllNotificationsAsRead();
+      await fetchNotifications(false);
+    } catch (e) {
+      console.log('Error marking all as read', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (item: any) => {
+    if (!item.isRead) {
+      try {
+        await assistantReadApi.markNotificationAsRead(item.id);
+        void fetchNotifications(false);
+      } catch (e) {}
+    }
     const referenceType = String(item.referenceType || item.entityType || item.type || '').toUpperCase();
     const referenceId = item.referenceId || item.entityId;
     if (['SERIES_HIATUS_STARTED', 'SERIES_RESUMED'].includes(referenceType)) {
@@ -83,9 +101,19 @@ export default function AssistantInbox() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Typography variant="h1">Hộp thư</Typography>
-        <Typography variant="caption" color={colors.textSecondary}>Chỉ xem trên mobile</Typography>
-        <Typography variant="caption" color={unreadCount > 0 ? colors.primary : colors.textSecondary}>{unreadCount} chưa đọc · tự cập nhật</Typography>
+        <View style={{ flex: 1 }}>
+          <Typography variant="h1">Hộp thư</Typography>
+          <View style={{ flexDirection: 'row', marginTop: 4, flexWrap: 'wrap' }}>
+             <Typography variant="caption" color={colors.textSecondary}>Chỉ xem trên mobile · </Typography>
+             <Typography variant="caption" color={unreadCount > 0 ? colors.primary : colors.textSecondary}>{unreadCount} chưa đọc</Typography>
+          </View>
+        </View>
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllReadBtn}>
+            <CheckCheck color={colors.primary} size={20} />
+            <Typography variant="caption" color={colors.primary} style={{ marginLeft: 4 }}>Đã đọc tất cả</Typography>
+          </TouchableOpacity>
+        )}
       </View>
       <FlatList
         data={notifications}
@@ -146,6 +174,7 @@ export default function AssistantInbox() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  markAllReadBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F9FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 },
   list: { padding: 16, gap: 12 },
   card: {
     flexDirection: 'row',
